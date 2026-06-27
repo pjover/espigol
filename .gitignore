@@ -13,3 +13,5 @@
 # Go
 *.test
 *.out
+
+espigol.code-workspace
