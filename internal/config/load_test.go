@@ -31,6 +31,9 @@ func TestLoad_DefaultsWhenNoFile(t *testing.T) {
 	if cfg.BackupDir != filepath.Join(home, "backups") {
 		t.Errorf("BackupDir = %q, want %q", cfg.BackupDir, filepath.Join(home, "backups"))
 	}
+	if cfg.LogoPath != filepath.Join(home, "logo.png") {
+		t.Errorf("LogoPath = %q, want %q", cfg.LogoPath, filepath.Join(home, "logo.png"))
+	}
 }
 
 func TestLoad_ReadsYamlFile(t *testing.T) {
