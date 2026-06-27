@@ -71,3 +71,16 @@ func TestLoad_EnvOverridesFile(t *testing.T) {
 		t.Errorf("Server.Port = %d, want 7000", cfg.Server.Port)
 	}
 }
+
+func TestLoad_ReturnsErrorOnMalformedYaml(t *testing.T) {
+	home := t.TempDir()
+	// Tab indentation and broken structure make this invalid YAML.
+	bad := "business:\n\tname: \"unterminated\n"
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte(bad), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Load(home); err == nil {
+		t.Fatal("expected an error for malformed config.yaml, got nil")
+	}
+}

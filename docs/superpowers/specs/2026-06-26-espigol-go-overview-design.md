@@ -64,6 +64,7 @@ espigol/
 │   │   ├── tui/                   # Bubble Tea program, panels, keymaps, styles
 │   │   ├── web/                   # HTTP server, handlers, html/template views, auth
 │   │   └── report/                # maroto PDF + Markdown renderers (ReportRenderer impl)
+│   ├── app/                       # run-mode dispatch (flag parsing: TUI vs server)
 │   ├── config/                    # ~/.config/espigol resolution, $ESPIGOL_HOME override
 │   └── wire/                      # dependency injection wiring
 ├── db/
