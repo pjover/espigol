@@ -110,7 +110,7 @@ Ported from espigol-java's records (the authoritative, cleaned-up versions), wit
   addedOn, `boardMember`. Section membership is **no longer** boolean columns (see §3.2).
 - **`ExpenseForecast`** — id, partnerId, concept, description, grossAmount (`Money`),
   approvedAmount (`Money`), approvedOn, plannedDate, year, `subtypeCode`, `scopeKind`,
-  `sectionCode` (nullable), addedOn, enabled. No attachments (deferred, as in Java v1).
+  `sectionCode` (nullable), addedOn, enabled. No attachments (deferred, as in Java v1). The id is string, generated following this format "CPYYnnn" where `YY` are the last two digits of the `year` field, and `nnn` is a sequential digit for that year, if we reach 999 the we will start adding letters.
 - **`ExpenseType` / `ExpenseSubtype`** — **per-year** tables, composite key `(year, code)`.
   Opaque codes (the `a2`/`a3` quirk preserved), editable Catalan labels. Verbatim
   bracketed codes (`[a]`, `[a1]`…). Copied from the previous year on new-year creation;
@@ -124,7 +124,7 @@ Ported from espigol-java's records (the authoritative, cleaned-up versions), wit
 
 espigol-java hardcodes two sections (olive, livestock) as a fixed enum, with
 `oliveSection`/`livestockSection` booleans on `Partner`. Because the cooperative expects
-sections to grow (e.g. adding `vinya`), this stage makes sections **data**:
+sections to grow (e.g. adding `vineyard`), this stage makes sections **data**:
 
 - **`Section`** — global entity: `code` (e.g. `oliva`, `ramaderia`, `vinya`), `label`
   (Catalan, e.g. "Secció d'oliva"), `active`, `displayOrder`. Adding a section is a TUI
@@ -354,7 +354,7 @@ admin in the TUI.
   at startup in `internal/config`.
 - Contents: `espigol.db` (SQLite), `config.yaml`, `logo.png`, `reports/` (output dir).
 - `config.yaml`: business name, server port, Google OAuth client id/secret (or env vars,
-  env winning), output dir, logo path. **Limits live in the DB** (`submission_window`),
+  env winning), output dir, backup dir, logo path. **Limits live in the DB** (`submission_window`),
   not config.
 
 ### 9.2 Build
