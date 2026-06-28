@@ -202,11 +202,20 @@ Two tiers, both always run in CI.
 - The test calls `Compute(input)` and asserts the computed `ReportData` **numbers** (Money
   via `.String()`) equal the expected fixture exactly. Only numbers/ids/scopes/subtypes are
   asserted; names/concepts are anonymized — no cooperative data in the repo.
-- **Building the fixture** (one-time, at implementation): read the real numeric/structural
-  data from the gitignored `testdata/legacy-espigol.db` (amounts, partnerIds, scopes,
-  subtypes, memberships, types→category) and the golden MD (expected totals), then emit the
-  anonymized Go fixture. The real DB is read only at authoring time; only the anonymized
-  fixture is committed.
+- **Fixture source = the golden MD only** (not the legacy DB). The DB
+  (`testdata/legacy-espigol.db`) has diverged from the golden MD — it was edited after the
+  MD was produced (35 forecasts vs the MD's 28; differing amounts and scopes, e.g.
+  `CP26028` is 12.596 in the DB but 13.187 in the MD). So `Compute(DB data)` would NOT
+  match the golden numbers. Both the **input** (28 forecasts, 8 partners, 2 sections,
+  limits) and the **expected** values are derived from the single self-consistent golden MD,
+  which lists every forecast's CP code, scope/section grouping, per-partner grouping, and
+  gross amount. Subtype codes are not shown in the MD and do not affect the asserted totals,
+  so each forecast gets a placeholder subtype per category (`"a1"` for CURRENT, `"b1"` for
+  INVESTMENT); the subtype→category map maps those two codes. The golden 2026 data has
+  positive section remainders in both categories, so **no warning and no capping fire** in
+  the golden test — those paths are covered by the synthetic unit tests (§5.1). The
+  anonymized fixture values are embedded in the implementation plan (extracted from the MD
+  at authoring time); only the anonymized fixture is committed.
 
 ---
 
