@@ -1,7 +1,7 @@
 MODULE=github.com/pjover/espigol
 BIN=bin/espigol
 
-.PHONY: build run tui server test fmt vet tidy
+.PHONY: build run tui server test fmt vet tidy sqlc-generate migrate-status
 
 fmt:
 	go fmt ./...
@@ -27,3 +27,9 @@ test:
 
 tidy:
 	go mod tidy
+
+sqlc-generate:
+	go tool sqlc generate
+
+migrate-status:
+	@echo "migrations are applied automatically on Open; see db/migrations/"
