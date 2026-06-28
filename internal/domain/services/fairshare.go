@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	maxIterations        = 100
-	convergenceThreshold = "0.01"
+	maxIterations = 100
 )
+
+var convergenceThreshold = mustMoney("0.01")
 
 type fairShareResult struct {
 	allocations    []report.PartnerAllocation
@@ -46,7 +47,6 @@ func distribute(remainder model.Money, partnerTotals map[int]model.Money, partne
 	}
 
 	// Case 2: iterative fair share.
-	threshold := mustMoney(convergenceThreshold)
 	budgetLeft := remainder
 	for iter := 0; iter < maxIterations; iter++ {
 		nUnfixed := 0
@@ -82,7 +82,7 @@ func distribute(remainder model.Money, partnerTotals map[int]model.Money, partne
 			break
 		}
 		diff := absDecimal(remainder.Decimal().Sub(sumMoney(values(allocated, ids)).Decimal()))
-		if diff.Cmp(threshold.Decimal()) < 0 {
+		if diff.Cmp(convergenceThreshold.Decimal()) < 0 {
 			break
 		}
 	}

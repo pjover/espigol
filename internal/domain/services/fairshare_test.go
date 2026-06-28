@@ -61,6 +61,9 @@ func TestDistribute_AllAboveMean_CappedEqually(t *testing.T) {
 	if got[1] != "150.00" || got[2] != "150.00" {
 		t.Errorf("allocations = %v, want 150/150", got)
 	}
+	if r.finalRemainder.String() != "0.00" {
+		t.Errorf("finalRemainder = %q, want 0.00", r.finalRemainder.String())
+	}
 }
 
 func TestDistribute_NonPositivePool_NoClamp(t *testing.T) {
