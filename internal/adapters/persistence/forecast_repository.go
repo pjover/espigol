@@ -66,6 +66,12 @@ func (r *ForecastRepository) Create(ctx context.Context, f model.ExpenseForecast
 	return withID, nil
 }
 
+// InsertWithID inserts a forecast using its existing id verbatim, bypassing the
+// CPYYnnn allocation in Create. Used by the adopt tool to carry legacy ids.
+func (r *ForecastRepository) InsertWithID(ctx context.Context, f model.ExpenseForecast) error {
+	return r.q.InsertForecast(ctx, mapper.ForecastToInsert(f))
+}
+
 func (r *ForecastRepository) Save(ctx context.Context, f model.ExpenseForecast) error {
 	return r.q.UpdateForecast(ctx, mapper.ForecastToUpdate(f))
 }

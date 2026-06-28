@@ -78,6 +78,27 @@ func TestForecastRepository_CreateAllocatesIDAndRoundTrips(t *testing.T) {
 	}
 }
 
+func TestForecastRepository_InsertWithID(t *testing.T) {
+	repo, q := newForecastRepo(t)
+	seedForYear(t, q, 2026)
+	ctx := context.Background()
+
+	planned := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	f, _ := model.NewExpenseForecast("CP26099", 7, "Fixed", "desc", model.MoneyOf(500), model.ZeroMoney(),
+		nil, planned, 2026, "a1", model.NewCommonScope(), planned, true)
+
+	if err := repo.InsertWithID(ctx, f); err != nil {
+		t.Fatalf("InsertWithID: %v", err)
+	}
+	got, found, err := repo.FindByID(ctx, "CP26099")
+	if err != nil || !found {
+		t.Fatalf("FindByID after InsertWithID: found=%v err=%v", found, err)
+	}
+	if got.ID() != "CP26099" {
+		t.Errorf("id = %q, want CP26099", got.ID())
+	}
+}
+
 func TestForecastRepository_SectionScopeAndMoneyExactness(t *testing.T) {
 	repo, q := newForecastRepo(t)
 	seedForYear(t, q, 2026)
