@@ -53,3 +53,35 @@ func TestSectionRepository_Membership(t *testing.T) {
 		t.Fatalf("memberships = (%+v, %v)", got, err)
 	}
 }
+
+func TestSectionRepository_ListMemberships(t *testing.T) {
+	q := openTestDB(t)
+	pr := persistence.NewPartnerRepository(q)
+	sr := persistence.NewSectionRepository(q)
+	ctx := context.Background()
+
+	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
+	ram, _ := model.NewSection("ramaderia", "Secció de ramaderia", true, 2)
+	_ = sr.Save(ctx, oliva)
+	_ = sr.Save(ctx, ram)
+	p1, _ := model.NewPartner(1, "A", "", "", "a@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	p2, _ := model.NewPartner(2, "B", "", "", "b@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	_ = pr.Save(ctx, p1)
+	_ = pr.Save(ctx, p2)
+	m1, _ := model.NewPartnerSection(1, "oliva")
+	m2, _ := model.NewPartnerSection(1, "ramaderia")
+	m3, _ := model.NewPartnerSection(2, "oliva")
+	for _, m := range []model.PartnerSection{m1, m2, m3} {
+		if err := sr.AddMembership(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	all, err := sr.ListMemberships(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("ListMemberships = %d rows, want 3", len(all))
+	}
+}

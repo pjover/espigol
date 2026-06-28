@@ -26,6 +26,7 @@ type SectionRepository interface {
 	List(ctx context.Context) ([]model.Section, error)
 	AddMembership(ctx context.Context, m model.PartnerSection) error
 	ListMembershipsByPartner(ctx context.Context, partnerID int) ([]model.PartnerSection, error)
+	ListMemberships(ctx context.Context) ([]model.PartnerSection, error)
 }
 
 // TaxonomyRepository manages ExpenseType and ExpenseSubtype.
