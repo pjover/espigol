@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/viper v1.21.0
 )
 
