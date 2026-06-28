@@ -14,7 +14,7 @@ import (
 
 func main() {
 	from := flag.String("from", "", "path to the legacy espigol-java SQLite DB")
-	to := flag.String("to", "", "destination path for the new espigol.db")
+	to := flag.String("to", "", "destination path for the new espigol.db (adopt is NOT idempotent; requires a fresh path — use --force to overwrite)")
 	force := flag.Bool("force", false, "overwrite the destination if it exists")
 	flag.Parse()
 

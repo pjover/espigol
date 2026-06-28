@@ -88,7 +88,7 @@ func Run(ctx context.Context, legacyPath, destPath string) (Counts, error) {
 
 	// 6. Insert windows.
 	for _, lw := range d.Windows {
-		state, err := model.ParseWindowState(mapWindowState(lw.State))
+		state, err := model.ParseWindowState(lw.State)
 		if err != nil {
 			return Counts{}, fmt.Errorf("parsing window state %q: %w", lw.State, err)
 		}
@@ -113,7 +113,7 @@ func Run(ctx context.Context, legacyPath, destPath string) (Counts, error) {
 
 	// 7. Insert types.
 	for _, lt := range d.Types {
-		cat, err := model.ParseExpenseCategory(mapCategory(lt.Category))
+		cat, err := model.ParseExpenseCategory(lt.Category)
 		if err != nil {
 			return Counts{}, fmt.Errorf("parsing category %q: %w", lt.Category, err)
 		}
@@ -265,6 +265,23 @@ func validateCounts(c Counts, d *legacy.Dump) error {
 	if c.Partners != len(d.Partners) {
 		return fmt.Errorf("partners count mismatch: inserted %d, source %d", c.Partners, len(d.Partners))
 	}
+	// Always exactly 2 sections (oliva + ramaderia) are seeded.
+	if c.Sections != 2 {
+		return fmt.Errorf("sections count mismatch: inserted %d, want 2", c.Sections)
+	}
+	// Memberships = sum of OliveSection + LivestockSection booleans across all partners.
+	wantMemberships := 0
+	for _, lp := range d.Partners {
+		if lp.OliveSection {
+			wantMemberships++
+		}
+		if lp.LivestockSection {
+			wantMemberships++
+		}
+	}
+	if c.Memberships != wantMemberships {
+		return fmt.Errorf("memberships count mismatch: inserted %d, source %d", c.Memberships, wantMemberships)
+	}
 	if c.Windows != len(d.Windows) {
 		return fmt.Errorf("windows count mismatch: inserted %d, source %d", c.Windows, len(d.Windows))
 	}
@@ -302,28 +319,3 @@ func mapScope(catalan string) (model.ExpenseScope, error) {
 	}
 }
 
-// mapWindowState maps legacy window state strings to model constants.
-func mapWindowState(s string) string {
-	switch s {
-	case "DRAFT":
-		return "DRAFT"
-	case "OPEN":
-		return "OPEN"
-	case "CLOSED":
-		return "CLOSED"
-	default:
-		return s
-	}
-}
-
-// mapCategory maps legacy category strings to model constants.
-func mapCategory(s string) string {
-	switch s {
-	case "CURRENT":
-		return "CURRENT"
-	case "INVESTMENT":
-		return "INVESTMENT"
-	default:
-		return s
-	}
-}

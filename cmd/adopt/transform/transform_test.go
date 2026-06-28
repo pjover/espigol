@@ -76,14 +76,13 @@ func TestRun_AdoptsRealFixture(t *testing.T) {
 }
 
 func TestRun_RefusesExistingDest(t *testing.T) {
-	if _, err := os.Stat(fixture); err != nil {
-		t.Skip("legacy fixture not present; skipping")
-	}
+	// This test does not need the legacy fixture: refusing an existing destination
+	// happens before any legacy DB read, so any (possibly non-existent) legacy path works.
 	dest := filepath.Join(t.TempDir(), "espigol.db")
 	if err := os.WriteFile(dest, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := transform.Run(context.Background(), fixture, dest); err == nil {
+	if _, err := transform.Run(context.Background(), "nonexistent-legacy.db", dest); err == nil {
 		t.Error("expected Run to refuse an existing destination")
 	}
 }

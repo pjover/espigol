@@ -207,11 +207,34 @@ func readSubtypes(conn *sql.DB) ([]ExpenseSubtype, error) {
 	return out, rows.Err()
 }
 
+// exactMoney verifies that the 2-decimal rendering of a money column equals its
+// full-precision rendering (i.e. no precision was lost by SQLite's storage).
+// twoDecimal is printf('%.2f', col), tenDecimal is printf('%.10f', col).
+// It returns twoDecimal unchanged when the values agree, or an error.
+func exactMoney(table, col, id, twoDecimal, tenDecimal string) (string, error) {
+	// Parse both as float64 and compare at 2-decimal precision.
+	// Equal strings trivially pass; mismatches are caught by comparing the
+	// 2-decimal rendering of the full-precision value.
+	var full float64
+	if _, err := fmt.Sscanf(tenDecimal, "%f", &full); err != nil {
+		return "", fmt.Errorf("money precision check: cannot parse %q for %s.%s id %s: %w",
+			tenDecimal, table, col, id, err)
+	}
+	// Re-render full at 2 decimals and compare.
+	if fmt.Sprintf("%.2f", full) != twoDecimal {
+		return "", fmt.Errorf("money precision loss reading %s.%s for id %s: stored value %s rounds to %s, not %s",
+			table, col, id, tenDecimal, fmt.Sprintf("%.2f", full), twoDecimal)
+	}
+	return twoDecimal, nil
+}
+
 func readWindows(conn *sql.DB) ([]SubmissionWindow, error) {
 	rows, err := conn.Query(`
 		SELECT year, state, opened_at, closed_at, deadline,
 		       printf('%.2f', current_expense_limit),
-		       printf('%.2f', investment_expense_limit)
+		       printf('%.10f', current_expense_limit),
+		       printf('%.2f', investment_expense_limit),
+		       printf('%.10f', investment_expense_limit)
 		FROM submission_window ORDER BY year`)
 	if err != nil {
 		return nil, err
@@ -222,10 +245,19 @@ func readWindows(conn *sql.DB) ([]SubmissionWindow, error) {
 		var w SubmissionWindow
 		var openedAt, closedAt sql.NullString
 		var deadline string
+		var currentFull, investmentFull string
 		if err := rows.Scan(
 			&w.Year, &w.State, &openedAt, &closedAt, &deadline,
-			&w.CurrentLimit, &w.InvestmentLimit,
+			&w.CurrentLimit, &currentFull,
+			&w.InvestmentLimit, &investmentFull,
 		); err != nil {
+			return nil, err
+		}
+		yearID := fmt.Sprintf("%d", w.Year)
+		if w.CurrentLimit, err = exactMoney("submission_window", "current_expense_limit", yearID, w.CurrentLimit, currentFull); err != nil {
+			return nil, err
+		}
+		if w.InvestmentLimit, err = exactMoney("submission_window", "investment_expense_limit", yearID, w.InvestmentLimit, investmentFull); err != nil {
 			return nil, err
 		}
 		if w.OpenedAt, err = parseNullTime(openedAt); err != nil {
@@ -245,7 +277,8 @@ func readWindows(conn *sql.DB) ([]SubmissionWindow, error) {
 func readForecasts(conn *sql.DB) ([]ExpenseForecast, error) {
 	rows, err := conn.Query(`
 		SELECT id, partner_id, concept, description,
-		       printf('%.2f', gross_amount), printf('%.2f', approved_amount),
+		       printf('%.2f', gross_amount), printf('%.10f', gross_amount),
+		       printf('%.2f', approved_amount), printf('%.10f', approved_amount),
 		       approved_on, planned_date, year, subtype_code, scope, added_on, enabled
 		FROM expense_forecast ORDER BY id`)
 	if err != nil {
@@ -258,11 +291,20 @@ func readForecasts(conn *sql.DB) ([]ExpenseForecast, error) {
 		var approvedOn sql.NullString
 		var planned, added string
 		var enabled int
+		var grossFull, approvedFull string
 		if err := rows.Scan(
 			&f.ID, &f.PartnerID, &f.Concept, &f.Description,
-			&f.GrossAmount, &f.ApprovedAmount, &approvedOn, &planned, &f.Year,
+			&f.GrossAmount, &grossFull,
+			&f.ApprovedAmount, &approvedFull,
+			&approvedOn, &planned, &f.Year,
 			&f.SubtypeCode, &f.Scope, &added, &enabled,
 		); err != nil {
+			return nil, err
+		}
+		if f.GrossAmount, err = exactMoney("expense_forecast", "gross_amount", f.ID, f.GrossAmount, grossFull); err != nil {
+			return nil, err
+		}
+		if f.ApprovedAmount, err = exactMoney("expense_forecast", "approved_amount", f.ID, f.ApprovedAmount, approvedFull); err != nil {
 			return nil, err
 		}
 		if f.ApprovedOn, err = parseNullTime(approvedOn); err != nil {
