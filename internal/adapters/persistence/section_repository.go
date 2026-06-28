@@ -6,14 +6,11 @@ import (
 	"github.com/pjover/espigol/internal/adapters/persistence/mapper"
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
 	"github.com/pjover/espigol/internal/domain/model"
-	"github.com/pjover/espigol/internal/domain/ports"
 )
 
 type SectionRepository struct {
 	q *sqlc.Queries
 }
-
-var _ ports.SectionRepository = (*SectionRepository)(nil)
 
 func NewSectionRepository(q *sqlc.Queries) *SectionRepository {
 	return &SectionRepository{q: q}

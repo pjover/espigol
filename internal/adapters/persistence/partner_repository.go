@@ -9,14 +9,11 @@ import (
 	"github.com/pjover/espigol/internal/adapters/persistence/mapper"
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
 	"github.com/pjover/espigol/internal/domain/model"
-	"github.com/pjover/espigol/internal/domain/ports"
 )
 
 type PartnerRepository struct {
 	q *sqlc.Queries
 }
-
-var _ ports.PartnerRepository = (*PartnerRepository)(nil)
 
 func NewPartnerRepository(q *sqlc.Queries) *PartnerRepository {
 	return &PartnerRepository{q: q}
