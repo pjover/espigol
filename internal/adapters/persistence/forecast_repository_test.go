@@ -50,7 +50,7 @@ func TestForecastRepository_CreateAllocatesIDAndRoundTrips(t *testing.T) {
 	ctx := context.Background()
 
 	planned := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	f, _ := model.NewExpenseForecast("", 7, "Concepte", "desc", model.MoneyOf(2880), model.ZeroMoney(),
+	f, _ := model.NewUnsavedExpenseForecast(7, "Concepte", "desc", model.MoneyOf(2880), model.ZeroMoney(),
 		nil, planned, 2026, "a1", model.NewCommonScope(), planned, true)
 
 	created, err := repo.Create(ctx, f)
@@ -90,7 +90,7 @@ func TestForecastRepository_SectionScopeAndMoneyExactness(t *testing.T) {
 	planned := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	sectionScope, _ := model.NewSectionScope("oliva")
 	gross, _ := model.MoneyFromString("1322.22") // the former-REAL value
-	f, _ := model.NewExpenseForecast("", 7, "C", "d", gross, model.ZeroMoney(),
+	f, _ := model.NewUnsavedExpenseForecast(7, "C", "d", gross, model.ZeroMoney(),
 		nil, planned, 2026, "a1", sectionScope, planned, true)
 
 	created, err := repo.Create(ctx, f)

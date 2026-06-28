@@ -30,3 +30,24 @@ func TestNewExpenseForecast_YearMustMatchPlannedDate(t *testing.T) {
 		t.Fatal("expected error: year 2025 != plannedDate.Year() 2026")
 	}
 }
+
+func TestNewExpenseForecast_EmptyIDRejected(t *testing.T) {
+	planned := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	_, err := NewExpenseForecast("", 7, "c", "d", ZeroMoney(), ZeroMoney(),
+		nil, planned, 2026, "a1", NewCommonScope(), time.Now(), true)
+	if err == nil {
+		t.Fatal("expected error: empty forecast id must be rejected")
+	}
+}
+
+func TestNewUnsavedExpenseForecast_SucceedsWithEmptyID(t *testing.T) {
+	planned := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	f, err := NewUnsavedExpenseForecast(7, "c", "d", ZeroMoney(), ZeroMoney(),
+		nil, planned, 2026, "a1", NewCommonScope(), time.Now(), true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if f.ID() != "" {
+		t.Errorf("expected empty ID, got %q", f.ID())
+	}
+}

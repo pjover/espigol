@@ -21,19 +21,41 @@ type ExpenseForecast struct {
 	enabled        bool
 }
 
+func validateForecastFields(partnerID int, subtypeCode string, year int, plannedDate time.Time) error {
+	if partnerID < 0 {
+		return fmt.Errorf("partnerID must be >= 0, got %d", partnerID)
+	}
+	if subtypeCode == "" {
+		return fmt.Errorf("subtypeCode must not be empty")
+	}
+	if year != plannedDate.Year() {
+		return fmt.Errorf("year %d must equal plannedDate year %d", year, plannedDate.Year())
+	}
+	return nil
+}
+
 func NewExpenseForecast(id string, partnerID int, concept, description string,
 	gross, approved Money, approvedOn *time.Time, plannedDate time.Time, year int,
 	subtypeCode string, scope ExpenseScope, addedOn time.Time, enabled bool) (ExpenseForecast, error) {
-	if partnerID < 0 {
-		return ExpenseForecast{}, fmt.Errorf("partnerID must be >= 0, got %d", partnerID)
+	if id == "" {
+		return ExpenseForecast{}, fmt.Errorf("forecast id must not be empty")
 	}
-	if subtypeCode == "" {
-		return ExpenseForecast{}, fmt.Errorf("subtypeCode must not be empty")
-	}
-	if year != plannedDate.Year() {
-		return ExpenseForecast{}, fmt.Errorf("year %d must equal plannedDate year %d", year, plannedDate.Year())
+	if err := validateForecastFields(partnerID, subtypeCode, year, plannedDate); err != nil {
+		return ExpenseForecast{}, err
 	}
 	return ExpenseForecast{id, partnerID, concept, description, gross, approved,
+		approvedOn, plannedDate, year, subtypeCode, scope, addedOn, enabled}, nil
+}
+
+// NewUnsavedExpenseForecast creates an ExpenseForecast without an id, for use before
+// the repository allocates the real CPYYnnn id. All other validations still apply.
+func NewUnsavedExpenseForecast(partnerID int, concept, description string,
+	gross, approved Money, approvedOn *time.Time, plannedDate time.Time, year int,
+	subtypeCode string, scope ExpenseScope, addedOn time.Time, enabled bool) (ExpenseForecast, error) {
+	if err := validateForecastFields(partnerID, subtypeCode, year, plannedDate); err != nil {
+		return ExpenseForecast{}, err
+	}
+	return ExpenseForecast{"", partnerID, concept, description, gross, approved,
 		approvedOn, plannedDate, year, subtypeCode, scope, addedOn, enabled}, nil
 }
 
