@@ -95,8 +95,11 @@ func computeCategory(cat model.ExpenseCategory, limit model.Money, in Allocation
 	availableForSections := limit.Minus(commonTotal)
 	sectionsRemainder := availableForSections.Minus(sectionsTotal)
 
-	// Warning: added in Task 4 (nil for now).
+	// Warning (only when sections are over-budget).
 	var warning *report.WarningData
+	if sectionsRemainder.Cmp(model.ZeroMoney()) < 0 {
+		warning = computeWarning(cat, availableForSections, sections, sectionDetails, in)
+	}
 
 	// Partner (Soci) scope.
 	partnerF := filterPartner(forCat)
@@ -241,4 +244,53 @@ func sumForecasts(fs []model.ExpenseForecast) model.Money {
 		total = total.Plus(f.GrossAmount())
 	}
 	return total
+}
+
+// computeWarning splits availableForSections across the active sections in
+// proportion to the number of PRODUCER members of each section. A producer who
+// belongs to two sections counts in each (matching the reference).
+func computeWarning(cat model.ExpenseCategory, availableForSections model.Money, sections []model.Section, sectionDetails []report.SectionDetail, in AllocationInput) *report.WarningData {
+	requestedByCode := map[string]model.Money{}
+	for _, sd := range sectionDetails {
+		requestedByCode[sd.SectionCode] = sd.Total
+	}
+	producerByCode := producerCounts(in)
+
+	denominator := 0
+	for _, s := range sections {
+		denominator += producerByCode[s.Code()]
+	}
+
+	rows := make([]report.SectionWarning, 0, len(sections))
+	for _, s := range sections {
+		n := producerByCode[s.Code()]
+		allowed := model.ZeroMoney()
+		if denominator > 0 {
+			allowed = availableForSections.Times(n).DividedBy(denominator)
+		}
+		requested := requestedByCode[s.Code()]
+		rows = append(rows, report.SectionWarning{
+			SectionCode: s.Code(), Label: s.Label(), Producers: n,
+			Allowed: allowed, Requested: requested, Adjustment: requested.Minus(allowed),
+		})
+	}
+	return &report.WarningData{Category: cat, Rows: rows}
+}
+
+// producerCounts returns, per section code, the number of PRODUCER partners that
+// are members of that section.
+func producerCounts(in AllocationInput) map[string]int {
+	isProducer := map[int]bool{}
+	for _, p := range in.Partners {
+		if p.PartnerType() == model.Productor {
+			isProducer[p.ID()] = true
+		}
+	}
+	counts := map[string]int{}
+	for _, m := range in.Memberships {
+		if isProducer[m.PartnerID()] {
+			counts[m.SectionCode()]++
+		}
+	}
+	return counts
 }

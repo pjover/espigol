@@ -91,6 +91,8 @@ func TestCompute_CommonSectionsSocis_Basic(t *testing.T) {
 	}
 }
 
+func modelTime() time.Time { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
+
 // Excess socis with capping + per-item proration.
 func TestCompute_SocisCappedProration(t *testing.T) {
 	// sectionsRemainder must be small so socis exceed it. No common, no sections.
