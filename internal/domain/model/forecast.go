@@ -24,9 +24,6 @@ type ExpenseForecast struct {
 func NewExpenseForecast(id string, partnerID int, concept, description string,
 	gross, approved Money, approvedOn *time.Time, plannedDate time.Time, year int,
 	subtypeCode string, scope ExpenseScope, addedOn time.Time, enabled bool) (ExpenseForecast, error) {
-	if id == "" {
-		return ExpenseForecast{}, fmt.Errorf("forecast id must not be empty")
-	}
 	if partnerID < 0 {
 		return ExpenseForecast{}, fmt.Errorf("partnerID must be >= 0, got %d", partnerID)
 	}
