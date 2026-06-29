@@ -59,6 +59,10 @@ func (r *SectionRepository) ListMemberships(ctx context.Context) ([]model.Partne
 	return out, nil
 }
 
+func (r *SectionRepository) RemoveMembershipsByPartner(ctx context.Context, partnerID int) error {
+	return r.q.DeletePartnerSectionsByPartner(ctx, int64(partnerID))
+}
+
 func (r *SectionRepository) ListMembershipsByPartner(ctx context.Context, partnerID int) ([]model.PartnerSection, error) {
 	rows, err := r.q.ListPartnerSectionsByPartner(ctx, int64(partnerID))
 	if err != nil {

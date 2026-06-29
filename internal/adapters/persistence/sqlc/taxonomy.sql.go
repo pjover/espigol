@@ -9,6 +9,34 @@ import (
 	"context"
 )
 
+const deleteExpenseSubtype = `-- name: DeleteExpenseSubtype :exec
+DELETE FROM expense_subtype WHERE year = ? AND code = ?
+`
+
+type DeleteExpenseSubtypeParams struct {
+	Year int64
+	Code string
+}
+
+func (q *Queries) DeleteExpenseSubtype(ctx context.Context, arg DeleteExpenseSubtypeParams) error {
+	_, err := q.db.ExecContext(ctx, deleteExpenseSubtype, arg.Year, arg.Code)
+	return err
+}
+
+const deleteExpenseType = `-- name: DeleteExpenseType :exec
+DELETE FROM expense_type WHERE year = ? AND code = ?
+`
+
+type DeleteExpenseTypeParams struct {
+	Year int64
+	Code string
+}
+
+func (q *Queries) DeleteExpenseType(ctx context.Context, arg DeleteExpenseTypeParams) error {
+	_, err := q.db.ExecContext(ctx, deleteExpenseType, arg.Year, arg.Code)
+	return err
+}
+
 const listExpenseSubtypes = `-- name: ListExpenseSubtypes :many
 SELECT year, code, label, type_code FROM expense_subtype WHERE year = ? ORDER BY code
 `
