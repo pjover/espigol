@@ -458,6 +458,5 @@ func (s *Server) renderError(w http.ResponseWriter, r *http.Request, err error, 
 	type errorPageData struct {
 		Message string
 	}
-	w.WriteHeader(http.StatusInternalServerError)
-	render(w, "error", errorPageData{Message: "Error intern del servidor. Torneu-ho a intentar."})
+	renderStatus(w, http.StatusInternalServerError, "error", errorPageData{Message: "Error intern del servidor. Torneu-ho a intentar."})
 }

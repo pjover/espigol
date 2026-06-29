@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"embed"
 	"html/template"
 	"io/fs"
@@ -33,12 +34,21 @@ func staticFileServer() http.Handler {
 	return http.FileServerFS(sub)
 }
 
-// render executes the named template with data, writing to w.
-// On template error it writes a 500.
-func render(w http.ResponseWriter, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+// renderStatus buffers the named template execution, then writes Content-Type, status, and body.
+// If ExecuteTemplate fails nothing has been written to w, so it falls back to a 500 plain-text error.
+func renderStatus(w http.ResponseWriter, status int, name string, data any) {
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Printf("web: template %q error: %v", name, err)
 		http.Error(w, "error intern del servidor", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write(buf.Bytes())
+}
+
+// render executes the named template with a 200 OK status.
+func render(w http.ResponseWriter, name string, data any) {
+	renderStatus(w, http.StatusOK, name, data)
 }
