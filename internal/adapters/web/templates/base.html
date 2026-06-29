@@ -1,0 +1,25 @@
+{{/* base.html — shared layout placeholder; individual pages embed the full layout */}}
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.BusinessName}} — Espígol</title>
+  <link rel="stylesheet" href="/css/espigol.css">
+</head>
+<body>
+  <header>
+    <h1>{{.BusinessName}}</h1>
+    <nav>
+      <form method="POST" action="/logout" style="display:inline">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button type="submit">Sortir</button>
+      </form>
+    </nav>
+  </header>
+  <main>
+  </main>
+</body>
+</html>
+{{end}}

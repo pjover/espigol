@@ -1,0 +1,22 @@
+{{define "report"}}
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.BusinessName}} — Informe {{.Year}}</title>
+  <link rel="stylesheet" href="/css/espigol.css">
+</head>
+<body>
+  <header>
+    <h1>{{.BusinessName}}</h1>
+    <nav>
+      <a href="/">Tauler</a>
+    </nav>
+  </header>
+  <main>
+    {{.ReportHTML}}
+  </main>
+</body>
+</html>
+{{end}}

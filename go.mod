@@ -9,11 +9,13 @@ require (
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/viper v1.21.0
+	golang.org/x/oauth2 v0.36.0
 	modernc.org/sqlite v1.53.0
 )
 
 require (
 	cel.dev/expr v0.25.1 // indirect
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

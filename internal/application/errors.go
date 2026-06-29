@@ -10,4 +10,8 @@ var (
 	ErrDeadlinePassed     = errors.New("deadline must be in the future to open the window")
 	ErrIncompleteTaxonomy = errors.New("taxonomy must define at least one CURRENT and one INVESTMENT type")
 	ErrAnotherWindowOpen  = errors.New("another submission window is already open")
+	ErrNoOpenWindow       = errors.New("no submission window is currently open")
+	ErrWindowNotOpen      = errors.New("el termini ja ha finalitzat, contacta amb el Consell Rector")
+	ErrForbidden          = errors.New("not authorized to act on this forecast scope")
+	ErrForecastNotFound   = errors.New("forecast not found")
 )
