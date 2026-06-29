@@ -2,7 +2,6 @@ package report
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pjover/espigol/internal/domain/model"
 	"github.com/pjover/espigol/internal/domain/model/report"
@@ -38,7 +37,7 @@ func (PageBreak) isBlock()    {}
 
 // buildLayout walks the computed ReportData and emits the shared block sequence
 // consumed identically by the PDF and Markdown renderers.
-func buildLayout(rd report.ReportData, generatedAt time.Time) []Block {
+func buildLayout(rd report.ReportData) []Block {
 	var blocks []Block
 	for i, cat := range rd.Categories {
 		blocks = append(blocks, categoryBlocks(rd.Year, cat)...)
@@ -48,7 +47,7 @@ func buildLayout(rd report.ReportData, generatedAt time.Time) []Block {
 	}
 	blocks = append(blocks, PageBreak{}, SectionTitle{Text: "Resum"})
 	for _, cat := range rd.Categories {
-		blocks = append(blocks, resumTable(rd.Year, cat))
+		blocks = append(blocks, resumTable(cat))
 	}
 	return blocks
 }
@@ -161,7 +160,7 @@ func detailTable(title string, items []report.DetailItem) Table {
 	return Table{Title: title, Headers: []string{"CP", "Concepte", "Brut"}, Widths: []uint{2, 7, 3}, Rows: rows}
 }
 
-func resumTable(year int, cat report.CategoryReportData) Table {
+func resumTable(cat report.CategoryReportData) Table {
 	label := categoryLabel(cat.Category)
 	limit := cat.Common.Available
 	socisApproved := model.ZeroMoney()

@@ -50,7 +50,7 @@ func registerHeader(m pdf.Maroto, businessName, logoPath string) {
 	m.RegisterHeader(func() {
 		m.Row(20, func() {
 			if hasLogo {
-				m.Col(3, func() { _ = m.FileImage(logoPath, props.Rect{Left: 2, Center: true, Percent: 80}) })
+				m.Col(3, func() { _ = m.FileImage(logoPath, props.Rect{Center: true, Percent: 80}) })
 				m.ColSpace(5)
 				m.Col(4, func() {
 					m.Text(businessName, props.Text{Style: consts.BoldItalic, Size: 10, Align: consts.Left})
@@ -71,7 +71,7 @@ func registerFooter(m pdf.Maroto, footer string) {
 	m.RegisterFooter(func() {
 		m.Row(4, func() {
 			m.Col(12, func() {
-				m.Text(footer, props.Text{Top: 4, Style: consts.Italic, Size: 8, Align: consts.Right})
+				m.Text(footer, props.Text{Top: 1, Style: consts.Italic, Size: 8, Align: consts.Right})
 			})
 		})
 	})
@@ -105,6 +105,9 @@ func renderTable(m pdf.Maroto, t Table) {
 	if hasNonEmpty(t.Headers) {
 		m.Row(6, func() {
 			for i, h := range t.Headers {
+				if i >= len(t.Widths) {
+					break
+				}
 				w := t.Widths[i]
 				m.Col(w, func() {
 					m.Text(h, props.Text{Top: 1, Style: consts.Bold, Size: 9, Align: consts.Left})
@@ -121,6 +124,9 @@ func renderTable(m pdf.Maroto, t Table) {
 				style = consts.Bold
 			}
 			for i, cell := range rowCopy.Cells {
+				if i >= len(t.Widths) {
+					break
+				}
 				w := t.Widths[i]
 				align := consts.Left
 				if i == len(rowCopy.Cells)-1 {

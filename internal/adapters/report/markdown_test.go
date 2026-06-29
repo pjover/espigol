@@ -16,6 +16,8 @@ func TestMarkdownRenderer_StructureAndNumbers(t *testing.T) {
 	}
 	for _, want := range []string{
 		"## Resum",
+		"## Despesa corrent",
+		"## Despesa d'inversió",
 		"### Despesa corrent",
 		"### Despesa d'inversió",
 		"| CP | Concepte | Brut |", // a detail/common table header

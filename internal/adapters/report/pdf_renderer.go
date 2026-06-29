@@ -20,7 +20,7 @@ type PDFRenderer struct {
 func (r PDFRenderer) Render(rd report.ReportData, generatedAt time.Time) ([]byte, error) {
 	title := fmt.Sprintf("Previsions de despeses %d", rd.Year)
 	footer := generatedAt.Format("02/01/2006")
-	return renderDocument(title, footer, r.BusinessName, r.LogoPath, buildLayout(rd, generatedAt))
+	return renderDocument(title, footer, r.BusinessName, r.LogoPath, buildLayout(rd))
 }
 
 var _ ports.ReportRenderer = PDFRenderer{}

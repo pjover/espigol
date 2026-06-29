@@ -73,7 +73,7 @@ func tables(blocks []Block) []Table {
 
 func TestBuildLayout_StructureAndResum(t *testing.T) {
 	rd := buildGolden(t)
-	blocks := buildLayout(rd, time.Date(2026, 6, 29, 0, 0, 0, 0, time.UTC))
+	blocks := buildLayout(rd)
 
 	// both category labels appear as section titles
 	titles := map[string]bool{}

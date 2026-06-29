@@ -3,7 +3,6 @@ package report
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/pjover/espigol/internal/domain/model/report"
 )
@@ -16,7 +15,7 @@ type MarkdownRenderer struct{}
 func (MarkdownRenderer) Render(rd report.ReportData) []byte {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Previsions de despeses %d\n\n", rd.Year)
-	for _, blk := range buildLayout(rd, time.Time{}) {
+	for _, blk := range buildLayout(rd) {
 		switch v := blk.(type) {
 		case SectionTitle:
 			fmt.Fprintf(&b, "## %s\n\n", v.Text)
