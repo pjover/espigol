@@ -10,9 +10,9 @@ import (
 	"syscall"
 
 	"github.com/pjover/espigol/internal/adapters/tui"
-	"github.com/pjover/espigol/internal/adapters/web"
 	"github.com/pjover/espigol/internal/app"
 	"github.com/pjover/espigol/internal/config"
+	"github.com/pjover/espigol/internal/wire"
 )
 
 func main() {
@@ -29,7 +29,11 @@ func main() {
 	case app.ModeServer:
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer stop()
-		if err := web.Run(ctx, cfg); err != nil {
+		srv, err := wire.Server(cfg)
+		if err != nil {
+			log.Fatalf("espigol server: %v", err)
+		}
+		if err := srv.Run(ctx); err != nil {
 			log.Fatalf("espigol server: %v", err)
 		}
 	default:

@@ -1,0 +1,113 @@
+{{define "dashboard"}}
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.BusinessName}} — Tauler</title>
+  <link rel="stylesheet" href="/css/espigol.css">
+</head>
+<body>
+  <header>
+    <h1>{{.BusinessName}}</h1>
+    <nav>
+      <form method="POST" action="/logout" style="display:inline">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button type="submit">Sortir</button>
+      </form>
+    </nav>
+  </header>
+  <main>
+    <h2>Tauler de previsions</h2>
+
+    {{if .View.Year}}
+    <p>Any obert: <strong>{{.View.Year}}</strong> — Termini: {{.View.Deadline.Format "02/01/2006"}}</p>
+
+    <section>
+      <h3>Les meves previsions</h3>
+      {{if .View.Mine}}
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Concepte</th>
+            <th>Import brut</th>
+            <th>Accions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .View.Mine}}
+          <tr>
+            <td>{{.ID}}</td>
+            <td>{{.Concept}}</td>
+            <td>{{.GrossAmount.String}}</td>
+            <td>
+              <a href="/forecasts/{{.ID}}/edit">Edita</a>
+              <form method="POST" action="/forecasts/{{.ID}}/delete" style="display:inline">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <button type="submit" onclick="return confirm('Eliminar aquesta previsió?')">Elimina</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <p>No teniu cap previsió per a aquest any.</p>
+      {{end}}
+
+      <p><a href="/forecasts/new">Nova previsió</a></p>
+    </section>
+
+    {{if .View.BoardScoped}}
+    <section>
+      <h3>Previsions del Consell Rector</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Concepte</th>
+            <th>Import brut</th>
+            <th>Àmbit</th>
+            <th>Accions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .View.BoardScoped}}
+          <tr>
+            <td>{{.ID}}</td>
+            <td>{{.Concept}}</td>
+            <td>{{.GrossAmount.String}}</td>
+            <td>{{.Scope.Kind}}</td>
+            <td>
+              <a href="/forecasts/{{.ID}}/edit">Edita</a>
+              <form method="POST" action="/forecasts/{{.ID}}/delete" style="display:inline">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <button type="submit" onclick="return confirm('Eliminar aquesta previsió?')">Elimina</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </section>
+    {{end}}
+
+    {{else}}
+    <p>No hi ha cap any obert.</p>
+    {{end}}
+
+    {{if .View.ClosedYears}}
+    <section>
+      <h3>Informes d'anys tancats</h3>
+      <ul>
+        {{range .View.ClosedYears}}
+        <li><a href="/reports/{{.}}">Informe {{.}}</a></li>
+        {{end}}
+      </ul>
+    </section>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}

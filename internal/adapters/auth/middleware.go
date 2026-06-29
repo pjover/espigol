@@ -8,7 +8,11 @@ import (
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
-const cookieName = "espigol_session"
+// CookieName is the name of the session cookie. Exported for use by handlers
+// that need to read the raw token (e.g. for CSRF derivation).
+const CookieName = "espigol_session"
+
+const cookieName = CookieName
 
 // PartnerLookup is the minimal repository interface required by auth.
 // Exported so Task 6 wire/deps can reference auth.PartnerLookup.

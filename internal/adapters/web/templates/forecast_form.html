@@ -1,0 +1,88 @@
+{{define "forecast_form"}}
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.BusinessName}} — {{if .Forecast.ID}}Edita previsió{{else}}Nova previsió{{end}}</title>
+  <link rel="stylesheet" href="/css/espigol.css">
+</head>
+<body>
+  <header>
+    <h1>{{.BusinessName}}</h1>
+    <nav><a href="/">Tauler</a></nav>
+  </header>
+  <main>
+    <h2>{{if .Forecast.ID}}Edita previsió{{else}}Nova previsió{{end}}</h2>
+
+    {{if .Error}}
+    <p class="error">{{.Error}}</p>
+    {{end}}
+
+    {{if .Forecast.ID}}
+    <form method="POST" action="/forecasts/{{.Forecast.ID}}">
+    {{else}}
+    <form method="POST" action="/forecasts">
+    {{end}}
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+      <div>
+        <label for="concept">Concepte:</label>
+        <input type="text" id="concept" name="concept" value="{{.Forecast.Concept}}" required>
+      </div>
+
+      <div>
+        <label for="description">Descripció:</label>
+        <textarea id="description" name="description">{{.Forecast.Description}}</textarea>
+      </div>
+
+      <div>
+        <label for="gross_amount">Import brut (€):</label>
+        <input type="text" id="gross_amount" name="gross_amount" value="{{.Forecast.GrossAmount}}" required placeholder="0.00">
+      </div>
+
+      <div>
+        <label for="planned_date">Data prevista:</label>
+        <input type="date" id="planned_date" name="planned_date" value="{{.Forecast.PlannedDate}}" required>
+      </div>
+
+      <div>
+        <label for="subtype_code">Subtipus:</label>
+        <select id="subtype_code" name="subtype_code" required>
+          <option value="">— Seleccioneu un subtipus —</option>
+          {{range .Subtypes}}
+          <option value="{{.Code}}"{{if eq .Code $.Forecast.SubtypeCode}} selected{{end}}>{{.Code}} — {{.Label}}</option>
+          {{end}}
+        </select>
+      </div>
+
+      {{if .IsBoard}}
+      <div>
+        <label for="scope_kind">Àmbit:</label>
+        <select id="scope_kind" name="scope_kind" onchange="toggleSection(this.value)">
+          <option value="PARTNER"{{if eq .Forecast.ScopeKind "PARTNER"}} selected{{end}}>Propi (soci)</option>
+          <option value="COMMON"{{if eq .Forecast.ScopeKind "COMMON"}} selected{{end}}>Comú</option>
+          <option value="SECTION"{{if eq .Forecast.ScopeKind "SECTION"}} selected{{end}}>Secció</option>
+        </select>
+      </div>
+      <div id="section_div">
+        <label for="section_code">Codi de secció:</label>
+        <input type="text" id="section_code" name="section_code" value="{{.Forecast.SectionCode}}">
+      </div>
+      <script>
+        function toggleSection(val) {
+          document.getElementById('section_div').style.display = val === 'SECTION' ? '' : 'none';
+        }
+        toggleSection(document.getElementById('scope_kind').value);
+      </script>
+      {{end}}
+
+      <div>
+        <button type="submit">{{if .Forecast.ID}}Actualitza{{else}}Crea{{end}}</button>
+        <a href="/">Cancel·la</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>
+{{end}}
