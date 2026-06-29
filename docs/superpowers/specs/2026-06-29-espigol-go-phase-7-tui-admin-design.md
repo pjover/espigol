@@ -77,9 +77,10 @@ in one `TxManager.WithinTx`, and writes an `AuditEvent` with `actorEmail = cfg.A
 `application/errors.go`.
 
 - **`PartnerService`** — `Create`/`Update` (name, surname, VAT, email, mobile, `PartnerType`,
-  RIA number, board flag), enable/disable, `SetSectionMemberships(partnerID, []model.PartnerSection)`.
-  Validates id/email uniqueness and a valid `PartnerType`. Partner *types* remain the existing
-  `PartnerType` enum (no separate type CRUD — YAGNI).
+  RIA number, board flag), `SetSectionMemberships(partnerID, []model.PartnerSection)`.
+  Validates id/email uniqueness and a valid `PartnerType`. (Partner has no enabled flag, so
+  there is no enable/disable; the board flag toggles via `WithBoardMember`.) Partner *types*
+  remain the existing `PartnerType` enum (no separate type CRUD — YAGNI).
 - **`SectionService`** — `Create`/`Update` (code, label, active, order). Rejects duplicate
   codes; rejects disabling a section still referenced by forecasts in a non-closed year.
 - **`TaxonomyService`** — `CreateType`/`UpdateType`/`DeleteType`,
