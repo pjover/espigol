@@ -20,18 +20,12 @@ func NewForecastRepository(conn *sql.DB, q *sqlc.Queries) *ForecastRepository {
 	return &ForecastRepository{conn: conn, q: q}
 }
 
-// Create allocates the next CPYYnnn id for the forecast's year and inserts it,
-// within a single transaction so concurrent creates cannot collide.
+// Create allocates the next CPYYnnn id for the forecast's year and inserts it.
+// When called within a TxManager transaction, r.q is already tx-scoped so the
+// ID allocation and insert are atomic with the surrounding transaction. When
+// called directly (e.g. in standalone tests), r.q runs against the bare connection.
 func (r *ForecastRepository) Create(ctx context.Context, f model.ExpenseForecast) (model.ExpenseForecast, error) {
-	tx, err := r.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return model.ExpenseForecast{}, err
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	qtx := r.q.WithTx(tx)
-
-	ids, err := qtx.ListForecastIDsByYear(ctx, int64(f.Year()))
+	ids, err := r.q.ListForecastIDsByYear(ctx, int64(f.Year()))
 	if err != nil {
 		return model.ExpenseForecast{}, err
 	}
@@ -57,10 +51,7 @@ func (r *ForecastRepository) Create(ctx context.Context, f model.ExpenseForecast
 	if err != nil {
 		return model.ExpenseForecast{}, err
 	}
-	if err := qtx.InsertForecast(ctx, mapper.ForecastToInsert(withID)); err != nil {
-		return model.ExpenseForecast{}, err
-	}
-	if err := tx.Commit(); err != nil {
+	if err := r.q.InsertForecast(ctx, mapper.ForecastToInsert(withID)); err != nil {
 		return model.ExpenseForecast{}, err
 	}
 	return withID, nil
@@ -102,6 +93,10 @@ func (r *ForecastRepository) ListByYear(ctx context.Context, year int) ([]model.
 		out = append(out, f)
 	}
 	return out, nil
+}
+
+func (r *ForecastRepository) Delete(ctx context.Context, id string) error {
+	return r.q.DeleteForecast(ctx, id)
 }
 
 // rebuildWithID returns a copy of f with the given id, re-running domain validation.

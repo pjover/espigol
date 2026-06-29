@@ -52,6 +52,7 @@ type ForecastRepository interface {
 	Save(ctx context.Context, f model.ExpenseForecast) error // update existing by id
 	FindByID(ctx context.Context, id string) (model.ExpenseForecast, bool, error)
 	ListByYear(ctx context.Context, year int) ([]model.ExpenseForecast, error)
+	Delete(ctx context.Context, id string) error
 }
 
 // ReportRepository manages Report aggregates.

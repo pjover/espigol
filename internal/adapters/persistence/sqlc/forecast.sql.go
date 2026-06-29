@@ -10,6 +10,15 @@ import (
 	"database/sql"
 )
 
+const deleteForecast = `-- name: DeleteForecast :exec
+DELETE FROM expense_forecast WHERE id = ?
+`
+
+func (q *Queries) DeleteForecast(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteForecast, id)
+	return err
+}
+
 const getForecast = `-- name: GetForecast :one
 SELECT id, partner_id, concept, description, gross_amount, approved_amount, approved_on,
        planned_date, year, subtype_code, scope_kind, section_code, added_on, enabled

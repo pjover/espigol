@@ -22,3 +22,6 @@ FROM expense_forecast WHERE year = ? ORDER BY id;
 
 -- name: ListForecastIDsByYear :many
 SELECT id FROM expense_forecast WHERE year = ?;
+
+-- name: DeleteForecast :exec
+DELETE FROM expense_forecast WHERE id = ?;
