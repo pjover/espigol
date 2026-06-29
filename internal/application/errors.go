@@ -14,4 +14,10 @@ var (
 	ErrWindowNotOpen      = errors.New("el termini ja ha finalitzat, contacta amb el Consell Rector")
 	ErrForbidden          = errors.New("not authorized to act on this forecast scope")
 	ErrForecastNotFound   = errors.New("forecast not found")
+
+	ErrPartnerExists       = errors.New("a partner with that id already exists")
+	ErrPartnerNotFound     = errors.New("partner not found")
+	ErrEmailTaken          = errors.New("email address already in use by another partner")
+	ErrInvalidPartnerType  = errors.New("invalid partner type")
+	ErrSectionNotFound     = errors.New("section not found")
 )
