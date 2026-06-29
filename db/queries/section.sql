@@ -13,3 +13,6 @@ ON CONFLICT(partner_id, section_code) DO NOTHING;
 
 -- name: ListPartnerSectionsByPartner :many
 SELECT partner_id, section_code FROM partner_section WHERE partner_id = ? ORDER BY section_code;
+
+-- name: ListAllPartnerSections :many
+SELECT partner_id, section_code FROM partner_section ORDER BY partner_id, section_code;

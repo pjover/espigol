@@ -24,6 +24,33 @@ func (q *Queries) AddPartnerSection(ctx context.Context, arg AddPartnerSectionPa
 	return err
 }
 
+const listAllPartnerSections = `-- name: ListAllPartnerSections :many
+SELECT partner_id, section_code FROM partner_section ORDER BY partner_id, section_code
+`
+
+func (q *Queries) ListAllPartnerSections(ctx context.Context) ([]PartnerSection, error) {
+	rows, err := q.db.QueryContext(ctx, listAllPartnerSections)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PartnerSection{}
+	for rows.Next() {
+		var i PartnerSection
+		if err := rows.Scan(&i.PartnerID, &i.SectionCode); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPartnerSectionsByPartner = `-- name: ListPartnerSectionsByPartner :many
 SELECT partner_id, section_code FROM partner_section WHERE partner_id = ? ORDER BY section_code
 `

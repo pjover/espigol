@@ -43,6 +43,22 @@ func (r *SectionRepository) AddMembership(ctx context.Context, m model.PartnerSe
 	})
 }
 
+func (r *SectionRepository) ListMemberships(ctx context.Context) ([]model.PartnerSection, error) {
+	rows, err := r.q.ListAllPartnerSections(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.PartnerSection, 0, len(rows))
+	for _, row := range rows {
+		m, err := mapper.PartnerSectionFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
 func (r *SectionRepository) ListMembershipsByPartner(ctx context.Context, partnerID int) ([]model.PartnerSection, error) {
 	rows, err := r.q.ListPartnerSectionsByPartner(ctx, int64(partnerID))
 	if err != nil {

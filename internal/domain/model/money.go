@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"github.com/shopspring/decimal"
 )
 
@@ -59,3 +60,22 @@ func (m Money) Decimal() decimal.Decimal   { return m.amount }
 
 // String returns the canonical fixed-scale form, e.g. "31900.00".
 func (m Money) String() string { return m.amount.StringFixed(2) }
+
+// MarshalJSON renders Money as its canonical decimal string, e.g. "31900.00".
+func (m Money) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.String())
+}
+
+// UnmarshalJSON parses a decimal string (as produced by MarshalJSON) into Money.
+func (m *Money) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	parsed, err := MoneyFromString(s)
+	if err != nil {
+		return err
+	}
+	*m = parsed
+	return nil
+}
