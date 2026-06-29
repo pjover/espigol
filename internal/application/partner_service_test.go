@@ -123,9 +123,11 @@ func TestPartnerService_UpdateChangesFields(t *testing.T) {
 	ctx := context.Background()
 
 	in := baseInput(20)
-	if _, err := svc.Create(ctx, in); err != nil {
+	created, err := svc.Create(ctx, in)
+	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+	originalAddedOn := created.AddedOn()
 
 	updated := in
 	updated.Name = "Updated"
@@ -139,6 +141,9 @@ func TestPartnerService_UpdateChangesFields(t *testing.T) {
 		if p.ID() == 20 {
 			if p.Name() != "Updated" || p.Email() != "updated@e.test" {
 				t.Errorf("Update not applied: %+v", p)
+			}
+			if p.AddedOn() != originalAddedOn {
+				t.Errorf("AddedOn changed: got %v, want %v", p.AddedOn(), originalAddedOn)
 			}
 			return
 		}
