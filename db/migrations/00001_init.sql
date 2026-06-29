@@ -92,9 +92,12 @@ CREATE TABLE report (
     snapshot_json TEXT NOT NULL,
     pdf           BLOB NOT NULL,
     superseded_at TEXT,
-    UNIQUE (year, generated_at),
     FOREIGN KEY (year) REFERENCES submission_window(year)
 );
+
+-- Only one active (non-superseded) report per year is allowed.
+CREATE UNIQUE INDEX uq_report_active_per_year
+    ON report(year, generated_at) WHERE superseded_at IS NULL;
 
 CREATE INDEX idx_report_latest_per_year
     ON report(year, generated_at) WHERE superseded_at IS NULL;

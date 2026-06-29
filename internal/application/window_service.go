@@ -292,6 +292,52 @@ func buildSubtypeCategory(ctx context.Context, r ports.RepoSet, year int) (map[s
 	return out, nil
 }
 
+// Amend re-runs the allocation for a CLOSED year, supersedes the current report,
+// inserts a new one, and updates approved amounts — without changing window state.
+func (s *WindowService) Amend(ctx context.Context, year int) (model.Report, error) {
+	now := s.clock.Now()
+	var saved model.Report
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		w, ok, err := r.Windows.FindByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrWindowNotFound
+		}
+		if w.State() != model.WindowClosed {
+			return ErrWrongState
+		}
+
+		rd, err := s.computeReport(ctx, r, w)
+		if err != nil {
+			return err
+		}
+		if _, err := persistApproved(ctx, r, year, rd, now); err != nil {
+			return err
+		}
+
+		if latest, ok, err := r.Reports.FindLatestByYear(ctx, year); err != nil {
+			return err
+		} else if ok {
+			if err := r.Reports.MarkSuperseded(ctx, latest.ID(), now); err != nil {
+				return err
+			}
+		}
+
+		rep, err := s.buildReport(ctx, r, year, rd, now)
+		if err != nil {
+			return err
+		}
+		if err := appendAudit(ctx, r, model.AuditReportGenerated, year, now, ""); err != nil {
+			return err
+		}
+		saved = rep
+		return nil
+	})
+	return saved, err
+}
+
 // collectApproved gathers approved amounts from every detail item, keyed by forecast id.
 func collectApproved(rd report.ReportData) map[string]model.Money {
 	out := map[string]model.Money{}
