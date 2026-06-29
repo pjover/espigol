@@ -454,3 +454,297 @@ func truncate(s string, n int) string {
 	}
 	return s[:n] + "…"
 }
+
+// seedClosedWindowServer builds a server where there is NO open window for any
+// year (all windows are closed), so Create will return ErrNoOpenWindow → 409.
+func buildClosedWindowServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "closed_web_test.db"))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	q := sqlc.New(conn)
+	clock := fixedClock{t: testNow}
+	ctx := context.Background()
+
+	// Seed ONLY a CLOSED window — no open one.
+	win2026, _ := model.NewSubmissionWindow(2026, model.WindowClosed, nil, nil,
+		time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC), model.MoneyOf(30000), model.MoneyOf(70000))
+	if err := persistence.NewWindowRepository(q).Save(ctx, win2026); err != nil {
+		t.Fatalf("seed closed 2026 window: %v", err)
+	}
+
+	// Taxonomy for 2026 (needed for form submission)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2026, "A", "Corrent", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2026, "a1", "Subtipus corrent 1", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+
+	// Partner
+	soci, _ := model.NewPartner(1, "Soci Test", "", "", "s1@e.test", "", model.Productor, 0, testNow, false)
+	if err := persistence.NewPartnerRepository(q).Save(ctx, soci); err != nil {
+		t.Fatalf("seed partner: %v", err)
+	}
+
+	sessions := auth.NewSessionStore(q, clock)
+	partners := persistence.NewPartnerRepository(q)
+	cfg := &config.Config{BusinessName: "Cooperativa Test"}
+	cfg.Server.Port = 0
+
+	authn := auth.NewAuthenticator(cfg, sessions, partners)
+	forecasts := application.NewForecastService(persistence.NewTxManager(conn), clock)
+
+	deps := web.Deps{
+		Forecasts: forecasts,
+		Auth:      authn,
+		Sessions:  sessions,
+		Partners:  partners,
+		Reports:   persistence.NewReportRepository(q),
+		HTML:      reportadapter.HTMLRenderer{},
+		Taxonomy:  persistence.NewTaxonomyRepository(q),
+		Cfg:       cfg,
+		Secure:    false,
+	}
+	srv := web.NewServer(deps)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// buildBoardServer builds a server with two partners:
+//   - soci A  (id=1, email "sA@e.test", regular partner)
+//   - board B (id=2, email "sB@e.test", board member with COMMON BoardAuthorization)
+//
+// An open 2026 window is seeded. Returns the server plus the ID of the
+// forecast created by soci A (used for the cross-soci test).
+func buildBoardServer(t *testing.T) (ts *httptest.Server, partnerAForecastID string) {
+	t.Helper()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "board_web_test.db"))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	q := sqlc.New(conn)
+	clock := fixedClock{t: testNow}
+	ctx := context.Background()
+
+	// Open 2026 window
+	win2026, _ := model.NewSubmissionWindow(2026, model.WindowOpen, ptrTime(testNow), nil,
+		time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC), model.MoneyOf(30000), model.MoneyOf(70000))
+	if err := persistence.NewWindowRepository(q).Save(ctx, win2026); err != nil {
+		t.Fatalf("seed 2026 window: %v", err)
+	}
+
+	// Taxonomy
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2026, "A", "Corrent", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2026, "a1", "Subtipus corrent 1", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+
+	// Soci A — regular partner
+	sociA, _ := model.NewPartner(1, "Soci A", "", "", "sA@e.test", "", model.Productor, 0, testNow, false)
+	if err := persistence.NewPartnerRepository(q).Save(ctx, sociA); err != nil {
+		t.Fatalf("seed soci A: %v", err)
+	}
+
+	// Board B — board member
+	boardB, _ := model.NewPartner(2, "Board B", "", "", "sB@e.test", "", model.Productor, 0, testNow, true)
+	if err := persistence.NewPartnerRepository(q).Save(ctx, boardB); err != nil {
+		t.Fatalf("seed board B: %v", err)
+	}
+
+	// BoardAuthorization for board B: COMMON scope
+	authCommon, _ := model.NewBoardAuthorization(2, model.ScopeCommon, "")
+	if err := persistence.NewBoardAuthorizationRepository(q).Save(ctx, authCommon); err != nil {
+		t.Fatalf("seed board authorization: %v", err)
+	}
+
+	sessions := auth.NewSessionStore(q, clock)
+	partners := persistence.NewPartnerRepository(q)
+	cfg := &config.Config{BusinessName: "Cooperativa Test"}
+	cfg.Server.Port = 0
+
+	authn := auth.NewAuthenticator(cfg, sessions, partners)
+	forecasts := application.NewForecastService(persistence.NewTxManager(conn), clock)
+
+	deps := web.Deps{
+		Forecasts: forecasts,
+		Auth:      authn,
+		Sessions:  sessions,
+		Partners:  partners,
+		Reports:   persistence.NewReportRepository(q),
+		HTML:      reportadapter.HTMLRenderer{},
+		Taxonomy:  persistence.NewTaxonomyRepository(q),
+		Cfg:       cfg,
+		Secure:    false,
+	}
+	srv := web.NewServer(deps)
+	ts = httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	// Seed a forecast owned by soci A via the service (bypass HTTP for seeding)
+	gross, _ := model.MoneyFromString("100.00")
+	plannedDate := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	in := application.ForecastInput{
+		Concept:     "Eines soci A",
+		GrossAmount: gross,
+		PlannedDate: plannedDate,
+		SubtypeCode: "a1",
+		ScopeKind:   model.ScopePartner,
+	}
+	created, err := forecasts.Create(ctx, sociA, in)
+	if err != nil {
+		t.Fatalf("seed forecast for soci A: %v", err)
+	}
+	return ts, created.ID()
+}
+
+// loginAndGetCSRF logs in via dev-login and returns the CSRF token from /forecasts/new.
+func loginAndGetCSRF(t *testing.T, client *http.Client, baseURL, email string) string {
+	t.Helper()
+	if _, err := client.PostForm(baseURL+"/dev-login", url.Values{"email": {email}}); err != nil {
+		t.Fatalf("dev-login %s: %v", email, err)
+	}
+	formResp, err := client.Get(baseURL + "/forecasts/new")
+	if err != nil {
+		t.Fatalf("GET /forecasts/new: %v", err)
+	}
+	body := bodyString(t, formResp)
+	tok := extractCSRF(t, body)
+	if tok == "" {
+		t.Fatalf("could not extract CSRF from /forecasts/new for %s; snippet: %q", email, truncate(body, 400))
+	}
+	return tok
+}
+
+// TestServer_WindowClosed409 asserts that posting to /forecasts when no window
+// is open returns HTTP 409.
+func TestServer_WindowClosed409(t *testing.T) {
+	ts := buildClosedWindowServer(t)
+	client := followRedirectClient(t)
+
+	csrfToken := loginAndGetCSRF(t, client, ts.URL, "s1@e.test")
+
+	// POST /forecasts — no open window → 409
+	noRedirect := noRedirectClient(t)
+	u, _ := url.Parse(ts.URL)
+	for _, c := range client.Jar.Cookies(u) {
+		noRedirect.Jar.SetCookies(u, []*http.Cookie{c})
+	}
+
+	resp, err := noRedirect.PostForm(ts.URL+"/forecasts", url.Values{
+		"csrf":         {csrfToken},
+		"concept":      {"Test"},
+		"gross_amount": {"100.00"},
+		"planned_date": {"2026-06-15"},
+		"subtype_code": {"a1"},
+		"scope_kind":   {"PARTNER"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		body := bodyString(t, resp)
+		t.Errorf("POST /forecasts (no open window): status = %d, want 409; body: %q", resp.StatusCode, truncate(body, 300))
+	}
+}
+
+// TestServer_CrossSoci403 asserts that soci B updating or deleting a forecast
+// owned by soci A returns HTTP 403.
+func TestServer_CrossSoci403(t *testing.T) {
+	ts, forecastID := buildBoardServer(t)
+
+	// Authenticate as soci B (NOT the owner of the forecast)
+	client := followRedirectClient(t)
+	csrfToken := loginAndGetCSRF(t, client, ts.URL, "sB@e.test")
+
+	noRedirect := noRedirectClient(t)
+	u, _ := url.Parse(ts.URL)
+	for _, c := range client.Jar.Cookies(u) {
+		noRedirect.Jar.SetCookies(u, []*http.Cookie{c})
+	}
+
+	// soci B attempts to delete soci A's forecast → 403
+	resp, err := noRedirect.PostForm(ts.URL+"/forecasts/"+forecastID+"/delete", url.Values{
+		"csrf": {csrfToken},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		body := bodyString(t, resp)
+		t.Errorf("cross-soci delete: status = %d, want 403; body: %q", resp.StatusCode, truncate(body, 300))
+	}
+}
+
+// TestServer_BoardScope asserts that a board member with COMMON authorization
+// can create a COMMON-scoped forecast (303) and that creating an unauthorized
+// scope (e.g. SECTION without authorization for it) returns 403.
+func TestServer_BoardScope(t *testing.T) {
+	ts, _ := buildBoardServer(t)
+
+	t.Run("board member COMMON scope -> 303", func(t *testing.T) {
+		client := followRedirectClient(t)
+		csrfToken := loginAndGetCSRF(t, client, ts.URL, "sB@e.test")
+
+		noRedirect := noRedirectClient(t)
+		u, _ := url.Parse(ts.URL)
+		for _, c := range client.Jar.Cookies(u) {
+			noRedirect.Jar.SetCookies(u, []*http.Cookie{c})
+		}
+
+		resp, err := noRedirect.PostForm(ts.URL+"/forecasts", url.Values{
+			"csrf":         {csrfToken},
+			"concept":      {"Compra comú board"},
+			"gross_amount": {"500.00"},
+			"planned_date": {"2026-09-01"},
+			"subtype_code": {"a1"},
+			"scope_kind":   {"COMMON"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusSeeOther {
+			body := bodyString(t, resp)
+			t.Errorf("board COMMON create: status = %d, want 303; body: %q", resp.StatusCode, truncate(body, 400))
+		}
+	})
+
+	t.Run("board member unauthorized SECTION scope -> 403", func(t *testing.T) {
+		client := followRedirectClient(t)
+		csrfToken := loginAndGetCSRF(t, client, ts.URL, "sB@e.test")
+
+		noRedirect := noRedirectClient(t)
+		u, _ := url.Parse(ts.URL)
+		for _, c := range client.Jar.Cookies(u) {
+			noRedirect.Jar.SetCookies(u, []*http.Cookie{c})
+		}
+
+		// board B has COMMON auth only, not SECTION "oliva" → ErrForbidden → 403
+		resp, err := noRedirect.PostForm(ts.URL+"/forecasts", url.Values{
+			"csrf":         {csrfToken},
+			"concept":      {"Secció no autoritzada"},
+			"gross_amount": {"200.00"},
+			"planned_date": {"2026-09-01"},
+			"subtype_code": {"a1"},
+			"scope_kind":   {"SECTION"},
+			"section_code": {"oliva"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			body := bodyString(t, resp)
+			t.Errorf("board unauthorized SECTION: status = %d, want 403; body: %q", resp.StatusCode, truncate(body, 400))
+		}
+	})
+}

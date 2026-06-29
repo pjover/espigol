@@ -52,6 +52,9 @@ func (s *Server) handleAccessDenied(w http.ResponseWriter, r *http.Request) {
 
 // handleLogout deletes the session and clears the cookie.
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if !s.checkCSRF(w, r) {
+		return
+	}
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		_ = s.deps.Sessions.Delete(r.Context(), c.Value)
 	}
