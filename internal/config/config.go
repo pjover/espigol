@@ -38,6 +38,7 @@ type Config struct {
 	OAuth struct {
 		ClientID     string
 		ClientSecret string
+		RedirectURL  string
 	}
 }
 
@@ -61,6 +62,7 @@ func Load(home string) (*Config, error) {
 	v.SetDefault("logo.path", filepath.Join(home, "logo.png"))
 	v.SetDefault("oauth.client_id", "")
 	v.SetDefault("oauth.client_secret", "")
+	v.SetDefault("oauth.redirect_url", "")
 
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
@@ -80,5 +82,6 @@ func Load(home string) (*Config, error) {
 	cfg.Server.Port = v.GetInt("server.port")
 	cfg.OAuth.ClientID = v.GetString("oauth.client_id")
 	cfg.OAuth.ClientSecret = v.GetString("oauth.client_secret")
+	cfg.OAuth.RedirectURL = v.GetString("oauth.redirect_url")
 	return cfg, nil
 }
