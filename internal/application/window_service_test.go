@@ -139,3 +139,49 @@ func TestOpen_RejectsAnotherOpen(t *testing.T) {
 		t.Errorf("want ErrAnotherWindowOpen, got %v", err)
 	}
 }
+
+// seedDraftYear creates a DRAFT window for `year` with the given deadline and a minimal
+// taxonomy (both CURRENT and INVESTMENT types), unless onlyCurrent is true (no INVESTMENT).
+func seedDraftYear(t *testing.T, conn *sql.DB, year int, deadline time.Time, onlyCurrent bool) {
+	t.Helper()
+	q := sqlc.New(conn)
+	ctx := context.Background()
+	w, _ := model.NewSubmissionWindow(year, model.WindowDraft, nil, nil,
+		deadline, model.MoneyOf(30000), model.MoneyOf(70000))
+	if err := persistence.NewWindowRepository(q).Save(ctx, w); err != nil {
+		t.Fatal(err)
+	}
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(year, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(year, "a1", "[a1]", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+	if !onlyCurrent {
+		tb, _ := model.NewExpenseType(year, "B", "[b]", model.CategoryInvestment)
+		_ = tax.SaveType(ctx, tb)
+		sb, _ := model.NewExpenseSubtype(year, "b1", "[b1]", "B")
+		_ = tax.SaveSubtype(ctx, sb)
+	}
+}
+
+func TestOpen_RejectsPastDeadline(t *testing.T) {
+	svc, conn := newSvc(t)
+	// fixed clock is 2026-06-01; seed a DRAFT with deadline 2025-12-31 (past)
+	pastDeadline := time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)
+	seedDraftYear(t, conn, 2025, pastDeadline, false)
+	ctx := context.Background()
+	if err := svc.Open(ctx, 2025); !errors.Is(err, application.ErrDeadlinePassed) {
+		t.Errorf("want ErrDeadlinePassed, got %v", err)
+	}
+}
+
+func TestOpen_RejectsIncompleteTaxonomy(t *testing.T) {
+	svc, conn := newSvc(t)
+	// seed a DRAFT with future deadline but only CURRENT type (no INVESTMENT)
+	futureDeadline := time.Date(2027, 12, 31, 23, 59, 59, 0, time.UTC)
+	seedDraftYear(t, conn, 2027, futureDeadline, true)
+	ctx := context.Background()
+	if err := svc.Open(ctx, 2027); !errors.Is(err, application.ErrIncompleteTaxonomy) {
+		t.Errorf("want ErrIncompleteTaxonomy, got %v", err)
+	}
+}

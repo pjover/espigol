@@ -22,6 +22,7 @@ func seedOpenYearWithForecasts(t *testing.T, conn *sql.DB) {
 	wr := persistence.NewWindowRepository(q)
 	tax := persistence.NewTaxonomyRepository(q)
 	pr := persistence.NewPartnerRepository(q)
+	sr := persistence.NewSectionRepository(q)
 	fr := persistence.NewForecastRepository(conn, q)
 
 	w, _ := model.NewSubmissionWindow(2027, model.WindowOpen, ptrTime(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)), nil,
@@ -38,13 +39,21 @@ func seedOpenYearWithForecasts(t *testing.T, conn *sql.DB) {
 	p, _ := model.NewPartner(1, "Soci 1", "", "", "s1@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	_ = pr.Save(ctx, p)
 
+	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
+	_ = sr.Save(ctx, oliva)
+
 	planned := time.Date(2027, 6, 1, 0, 0, 0, 0, time.UTC)
 	common, _ := model.NewUnsavedExpenseForecast(1, "Comú", "", model.MoneyOf(100), model.ZeroMoney(), nil, planned, 2027, "a1", model.NewCommonScope(), planned, true)
 	soci, _ := model.NewUnsavedExpenseForecast(1, "Soci", "", model.MoneyOf(500), model.ZeroMoney(), nil, planned, 2027, "b1", model.NewPartnerScope(), planned, true)
+	secScope, _ := model.NewSectionScope("oliva")
+	sec, _ := model.NewUnsavedExpenseForecast(1, "Secció oliva", "", model.MoneyOf(50), model.ZeroMoney(), nil, planned, 2027, "b1", secScope, planned, true)
 	if _, err := fr.Create(ctx, common); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fr.Create(ctx, soci); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fr.Create(ctx, sec); err != nil {
 		t.Fatal(err)
 	}
 }

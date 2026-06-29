@@ -134,7 +134,7 @@ func (s *WindowService) Open(ctx context.Context, year int) error {
 		if err := r.Windows.Save(ctx, w.WithState(model.WindowOpen).WithOpenedAt(now)); err != nil {
 			return err
 		}
-		return appendAudit(ctx, r, model.AuditWindowOpened, year, now, "")
+		return appendAudit(ctx, r, model.AuditWindowOpened, "SubmissionWindow", strconv.Itoa(year), now, "")
 	})
 }
 
@@ -151,13 +151,13 @@ func mostRecentPrior(all []model.SubmissionWindow, year int) (model.SubmissionWi
 	return best, found
 }
 
-// appendAudit writes a system-actor audit event for a window/year.
-func appendAudit(ctx context.Context, r ports.RepoSet, kind model.AuditKind, year int, at time.Time, payload string) error {
+// appendAudit writes a system-actor audit event for any entity.
+func appendAudit(ctx context.Context, r ports.RepoSet, kind model.AuditKind, entityType, entityID string, at time.Time, payload string) error {
 	var payloadPtr *string
 	if payload != "" {
 		payloadPtr = &payload
 	}
-	e, err := model.NewAuditEvent(0, nil, "system@espigol", kind, "SubmissionWindow", strconv.Itoa(year), at, payloadPtr)
+	e, err := model.NewAuditEvent(0, nil, "system@espigol", kind, entityType, entityID, at, payloadPtr)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (s *WindowService) Close(ctx context.Context, year int) (model.Report, erro
 			return err
 		}
 		payload := fmt.Sprintf(`{"reportId":%d,"forecastsApproved":%d}`, rep.ID(), writes)
-		if err := appendAudit(ctx, r, model.AuditWindowClosed, year, now, payload); err != nil {
+		if err := appendAudit(ctx, r, model.AuditWindowClosed, "SubmissionWindow", strconv.Itoa(year), now, payload); err != nil {
 			return err
 		}
 		saved = rep
@@ -329,7 +329,7 @@ func (s *WindowService) Amend(ctx context.Context, year int) (model.Report, erro
 		if err != nil {
 			return err
 		}
-		if err := appendAudit(ctx, r, model.AuditReportGenerated, year, now, ""); err != nil {
+		if err := appendAudit(ctx, r, model.AuditReportGenerated, "Report", strconv.Itoa(rep.ID()), now, ""); err != nil {
 			return err
 		}
 		saved = rep
