@@ -90,6 +90,14 @@ type Section struct {
 	DisplayOrder int64
 }
 
+type Session struct {
+	Token     string
+	PartnerID int64
+	Email     string
+	CreatedAt string
+	ExpiresAt string
+}
+
 type SubmissionWindow struct {
 	Year                   int64
 	State                  string
