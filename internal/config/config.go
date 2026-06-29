@@ -40,6 +40,9 @@ type Config struct {
 		ClientSecret string
 		RedirectURL  string
 	}
+	Admin struct {
+		Email string
+	}
 }
 
 // Load reads <home>/config.yaml if present, applies defaults, and allows
@@ -63,6 +66,7 @@ func Load(home string) (*Config, error) {
 	v.SetDefault("oauth.client_id", "")
 	v.SetDefault("oauth.client_secret", "")
 	v.SetDefault("oauth.redirect_url", "")
+	v.SetDefault("admin.email", "admin@espigol")
 
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
@@ -83,5 +87,6 @@ func Load(home string) (*Config, error) {
 	cfg.OAuth.ClientID = v.GetString("oauth.client_id")
 	cfg.OAuth.ClientSecret = v.GetString("oauth.client_secret")
 	cfg.OAuth.RedirectURL = v.GetString("oauth.redirect_url")
+	cfg.Admin.Email = v.GetString("admin.email")
 	return cfg, nil
 }
