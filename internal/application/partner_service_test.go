@@ -19,15 +19,26 @@ const adminEmail = "admin@espigol.test"
 
 func ptNow() time.Time { return time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC) }
 
+// ptMutClock is a mutable clock so a test can advance time between operations.
+type ptMutClock struct{ t time.Time }
+
+func (c *ptMutClock) Now() time.Time { return c.t }
+
 func newPtSvc(t *testing.T) (*application.PartnerService, *sql.DB) {
+	t.Helper()
+	svc, conn, _ := newPtSvcClock(t, &ptMutClock{t: ptNow()})
+	return svc, conn
+}
+
+func newPtSvcClock(t *testing.T, clock *ptMutClock) (*application.PartnerService, *sql.DB, *ptMutClock) {
 	t.Helper()
 	conn, err := db.Open(filepath.Join(t.TempDir(), "pt.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	svc := application.NewPartnerService(persistence.NewTxManager(conn), fixedClock{t: ptNow()}, adminEmail)
-	return svc, conn
+	svc := application.NewPartnerService(persistence.NewTxManager(conn), clock, adminEmail)
+	return svc, conn, clock
 }
 
 // seedSections seeds oliva and ramaderia sections into the DB.
@@ -119,15 +130,21 @@ func TestPartnerService_CreateDuplicateEmailReturnsErrEmailTaken(t *testing.T) {
 }
 
 func TestPartnerService_UpdateChangesFields(t *testing.T) {
-	svc, _ := newPtSvc(t)
+	clock := &ptMutClock{t: ptNow()}
+	svc, _, _ := newPtSvcClock(t, clock)
 	ctx := context.Background()
 
 	in := baseInput(20)
-	created, err := svc.Create(ctx, in)
-	if err != nil {
+	if _, err := svc.Create(ctx, in); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	originalAddedOn := created.AddedOn()
+	// Baseline against the persisted AddedOn (Partner stores it date-only),
+	// not the in-memory create time, which carries hours.
+	createdAddedOn := findPartner(t, svc, 20).AddedOn()
+
+	// Advance to a different day so a regression that overwrote AddedOn with
+	// "now" would be caught (the persisted date would change).
+	clock.t = ptNow().AddDate(0, 0, 1)
 
 	updated := in
 	updated.Name = "Updated"
@@ -136,19 +153,29 @@ func TestPartnerService_UpdateChangesFields(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 
-	list, _ := svc.List(ctx)
+	p := findPartner(t, svc, 20)
+	if p.Name() != "Updated" || p.Email() != "updated@e.test" {
+		t.Errorf("Update not applied: %+v", p)
+	}
+	if !p.AddedOn().Equal(createdAddedOn) {
+		t.Errorf("AddedOn changed on update: got %v, want %v (create day)", p.AddedOn(), createdAddedOn)
+	}
+}
+
+// findPartner returns partner id from the service's List, failing if absent.
+func findPartner(t *testing.T, svc *application.PartnerService, id int) model.Partner {
+	t.Helper()
+	list, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
 	for _, p := range list {
-		if p.ID() == 20 {
-			if p.Name() != "Updated" || p.Email() != "updated@e.test" {
-				t.Errorf("Update not applied: %+v", p)
-			}
-			if p.AddedOn() != originalAddedOn {
-				t.Errorf("AddedOn changed: got %v, want %v", p.AddedOn(), originalAddedOn)
-			}
-			return
+		if p.ID() == id {
+			return p
 		}
 	}
-	t.Error("partner 20 not found after update")
+	t.Fatalf("partner %d not found", id)
+	return model.Partner{}
 }
 
 func TestPartnerService_UpdateNotFoundReturnsErrPartnerNotFound(t *testing.T) {
