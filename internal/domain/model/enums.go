@@ -84,7 +84,6 @@ const (
 	AuditPartnerEdited    AuditKind = "PARTNER_EDITED"
 	AuditNotificationSent AuditKind = "NOTIFICATION_SENT"
 	AuditMigration        AuditKind = "MIGRATION"
-	AuditPartnerSaved     AuditKind = "PARTNER_SAVED"
 	AuditSectionSaved     AuditKind = "SECTION_SAVED"
 	AuditTaxonomySaved    AuditKind = "TAXONOMY_SAVED"
 	AuditTaxonomyDeleted  AuditKind = "TAXONOMY_DELETED"
@@ -96,7 +95,7 @@ func ParseAuditKind(s string) (AuditKind, error) {
 	case AuditLogin, AuditForecastCreated, AuditForecastEdited, AuditForecastDeleted,
 		AuditWindowOpened, AuditWindowClosed, AuditWindowAutoClosed, AuditReportGenerated,
 		AuditPartnerCreated, AuditPartnerEdited, AuditNotificationSent, AuditMigration,
-		AuditPartnerSaved, AuditSectionSaved, AuditTaxonomySaved, AuditTaxonomyDeleted, AuditBoardAuthChanged:
+		AuditSectionSaved, AuditTaxonomySaved, AuditTaxonomyDeleted, AuditBoardAuthChanged:
 		return AuditKind(s), nil
 	default:
 		return "", fmt.Errorf("unknown AuditKind: %q", s)
