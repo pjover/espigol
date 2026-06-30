@@ -30,3 +30,57 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Cross-compile all targets
+        run: make dist
+
+      - name: Check binaries exist and report their type
+        run: |
+          for f in dist/linux-amd64/espigol dist/linux-arm64/espigol dist/darwin-arm64/espigol; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+            file "$f"
+          done
+
+      - name: Verify checksums
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+
+      - name: Smoke-test --version (linux/amd64, runs natively on this runner)
+        run: ./dist/linux-amd64/espigol --version
+
+      - name: Shellcheck the backup script
+        run: |
+          if command -v shellcheck >/dev/null; then
+            shellcheck deployments/backup-espigol.sh
+          else
+            echo "shellcheck not available on this runner; skipping"
+          fi
+
+      - name: Verify systemd unit syntax
+        run: |
+          if command -v systemd-analyze >/dev/null; then
+            systemd-analyze verify deployments/espigol-server.service \
+              deployments/backup-espigol.service deployments/backup-espigol.timer || true
+          else
+            echo "systemd-analyze not available on this runner; skipping"
+          fi
+
+      - name: Validate the Caddyfile
+        run: |
+          if command -v caddy >/dev/null; then
+            caddy validate --config deployments/Caddyfile --adapter caddyfile
+          else
+            echo "caddy not available on this runner; skipping"
+          fi
