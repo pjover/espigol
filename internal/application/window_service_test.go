@@ -58,6 +58,28 @@ func seedClosedYear(t *testing.T, conn *sql.DB, year int) {
 	_ = tax.SaveSubtype(ctx, sb)
 }
 
+func TestList_ReturnsAllWindows(t *testing.T) {
+	svc, conn := newSvc(t)
+	seedClosedYear(t, conn, 2025)
+	seedClosedYear(t, conn, 2026)
+	ctx := context.Background()
+
+	windows, err := svc.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(windows) != 2 {
+		t.Fatalf("List() returned %d windows, want 2", len(windows))
+	}
+	years := map[int]bool{}
+	for _, w := range windows {
+		years[w.Year()] = true
+	}
+	if !years[2025] || !years[2026] {
+		t.Errorf("List() years = %v, want 2025 and 2026", years)
+	}
+}
+
 func TestCreateYear_CopiesTaxonomyAndLimits(t *testing.T) {
 	svc, conn := newSvc(t)
 	seedClosedYear(t, conn, 2026)

@@ -24,6 +24,17 @@ func NewWindowService(tx ports.TxManager, renderer ports.ReportRenderer, clock p
 	return &WindowService{tx: tx, renderer: renderer, clock: clock}
 }
 
+// List returns every submission window, for admin/TUI listing purposes.
+func (s *WindowService) List(ctx context.Context) ([]model.SubmissionWindow, error) {
+	var out []model.SubmissionWindow
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		var err error
+		out, err = r.Windows.List(ctx)
+		return err
+	})
+	return out, err
+}
+
 // CreateYear creates a new DRAFT window, copying the most recent prior year's
 // limits and taxonomy.
 func (s *WindowService) CreateYear(ctx context.Context, year int) (model.SubmissionWindow, error) {
