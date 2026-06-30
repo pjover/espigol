@@ -27,4 +27,7 @@ var (
 	ErrTypeInUse      = errors.New("expense type is in use by a subtype")
 	ErrSubtypeInUse   = errors.New("expense subtype is in use by a forecast")
 	ErrTypeNotFound   = errors.New("expense type not found")
+
+	ErrNotBoardMember = errors.New("partner is not a board member")
+	ErrAuthExists     = errors.New("board authorization already exists for that partner and scope")
 )
