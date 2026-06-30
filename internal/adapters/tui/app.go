@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -202,7 +203,7 @@ func (m rootModel) View() string {
 	if m.deps.Cfg != nil {
 		businessName = m.deps.Cfg.BusinessName
 	}
-	topBar := titleStyle.Render(businessName) + "   " + dimStyle.Render("Any: ") + titleStyle.Render(itoa(m.year))
+	topBar := titleStyle.Render(businessName) + "   " + dimStyle.Render("Any: ") + titleStyle.Render(strconv.Itoa(m.year))
 	b.WriteString(topBar)
 	b.WriteString("\n\n")
 
@@ -267,27 +268,6 @@ func (m rootModel) renderHelpLine() string {
 		line = line + "\n" + helpStyle.Render("shift+tab/left: panell anterior  ·  ctrl+c: surt")
 	}
 	return helpStyle.Render(line)
-}
-
-// itoa avoids importing strconv solely for one call site... kept tiny and
-// dependency-free.
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	if neg {
-		return "-" + string(digits)
-	}
-	return string(digits)
 }
 
 // App is the TUI adapter's entry point: it wraps the root Bubble Tea model
