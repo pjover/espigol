@@ -227,6 +227,9 @@ type forecastFormModal struct {
 	gross       textinput.Model
 	plannedDate textinput.Model
 
+	// errMsg holds an inline validation message; non-empty keeps the modal open.
+	errMsg string
+
 	// focused indexes into fieldOrder.
 	focused int
 }
@@ -254,7 +257,13 @@ const (
 func newForecastFormModal(deps Deps, year int, existing *model.ExpenseForecast, reload func(run func(ctx context.Context) error) tea.Cmd) *forecastFormModal {
 	ctx := context.Background()
 	partners, _ := deps.Partners.List(ctx)
-	subtypes, _ := deps.Taxonomy.ListSubtypes(ctx, year)
+	// When editing, AdminUpdate keeps the forecast's own year, so the subtype
+	// list must come from that year (not the panel's year context).
+	subtypeYear := year
+	if existing != nil {
+		subtypeYear = existing.Year()
+	}
+	subtypes, _ := deps.Taxonomy.ListSubtypes(ctx, subtypeYear)
 	sections, _ := deps.Sections.List(ctx)
 	scopes := []model.ScopeKind{model.ScopePartner, model.ScopeCommon, model.ScopeSection}
 
@@ -345,7 +354,12 @@ func (m *forecastFormModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		return m, tea.Batch(m.submit(), closeModalCmd)
+		// On a validation error submit() returns nil and sets errMsg; keep the
+		// modal open so the admin can correct the input.
+		if cmd := m.submit(); cmd != nil {
+			return m, tea.Batch(cmd, closeModalCmd)
+		}
+		return m, nil
 	case "tab", "down":
 		m.blurCurrent()
 		m.focused = (m.focused + 1) % int(forecastFormFieldCount)
@@ -443,12 +457,15 @@ func (m *forecastFormModal) focusCurrent() {
 // required field fails to parse — the modal still closes; this mirrors
 // form.go's onSubmit convention where parse failures are simply dropped.
 func (m *forecastFormModal) submit() tea.Cmd {
+	m.errMsg = ""
 	gross, err := model.MoneyFromString(strings.TrimSpace(m.gross.Value()))
 	if err != nil {
+		m.errMsg = "Import brut no vàlid (exemple: 100.00)"
 		return nil
 	}
 	plannedDate, err := time.Parse("2006-01-02", strings.TrimSpace(m.plannedDate.Value()))
 	if err != nil {
+		m.errMsg = "Data prevista no vàlida (format: 2026-03-01)"
 		return nil
 	}
 	var scopeKind model.ScopeKind
@@ -510,6 +527,12 @@ func (m *forecastFormModal) View() string {
 	b.WriteString(m.textLine("Descripció", fieldDescription, m.description))
 	b.WriteString(m.textLine("Import brut", fieldGross, m.gross))
 	b.WriteString(m.textLine("Data prevista", fieldPlannedDate, m.plannedDate))
+
+	if m.errMsg != "" {
+		b.WriteString("\n")
+		b.WriteString(redStyle.Render("Error: " + m.errMsg))
+		b.WriteString("\n")
+	}
 
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("tab/shift+tab: mou camp · left/right: canvia selector · enter: desa · esc: cancel·la"))
