@@ -24,7 +24,8 @@ func TestReportExporter_WritesPdfAndMd(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if err := NewReportExporter().Export(rep, dir); err != nil {
+	exporter := NewReportExporter(PDFRenderer{BusinessName: "Test", LogoPath: ""})
+	if err := exporter.Export(rep, dir); err != nil {
 		t.Fatalf("export: %v", err)
 	}
 
@@ -43,5 +44,35 @@ func TestReportExporter_WritesPdfAndMd(t *testing.T) {
 	}
 	if !strings.Contains(string(gotMd), "# Previsions de despeses 2026") || !strings.Contains(string(gotMd), "23.498,96 €") {
 		t.Errorf("md content unexpected")
+	}
+}
+
+func TestReportExporter_ExportData_RendersFreshPreview(t *testing.T) {
+	rd := buildGolden(t)
+	generatedAt := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+
+	dir := t.TempDir()
+	exporter := NewReportExporter(PDFRenderer{BusinessName: "Test", LogoPath: ""})
+	if err := exporter.ExportData(rd, generatedAt, dir); err != nil {
+		t.Fatalf("export data: %v", err)
+	}
+
+	pdfPath := filepath.Join(dir, "Previsions de despeses 2026.pdf")
+	mdPath := filepath.Join(dir, "Previsions de despeses 2026.md")
+
+	gotPdf, err := os.ReadFile(pdfPath)
+	if err != nil {
+		t.Fatalf("pdf not written: %v", err)
+	}
+	if !strings.HasPrefix(string(gotPdf), "%PDF") {
+		t.Errorf("pdf does not start with %%PDF")
+	}
+
+	gotMd, err := os.ReadFile(mdPath)
+	if err != nil {
+		t.Fatalf("md not written: %v", err)
+	}
+	if !strings.Contains(string(gotMd), "2.880,00 €") {
+		t.Errorf("md content missing golden EU number")
 	}
 }
