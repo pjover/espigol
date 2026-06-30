@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pjover/espigol/internal/adapters/tui"
 	"github.com/pjover/espigol/internal/app"
 	"github.com/pjover/espigol/internal/config"
 	"github.com/pjover/espigol/internal/wire"
@@ -37,7 +36,11 @@ func main() {
 			log.Fatalf("espigol server: %v", err)
 		}
 	default:
-		if err := tui.Run(cfg); err != nil {
+		app, err := wire.TUI(cfg)
+		if err != nil {
+			log.Fatalf("espigol tui: %v", err)
+		}
+		if err := app.Run(); err != nil {
 			log.Fatalf("espigol tui: %v", err)
 		}
 	}

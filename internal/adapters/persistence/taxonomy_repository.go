@@ -40,6 +40,20 @@ func (r *TaxonomyRepository) ListTypes(ctx context.Context, year int) ([]model.E
 	return out, nil
 }
 
+func (r *TaxonomyRepository) DeleteType(ctx context.Context, year int, code string) error {
+	return r.q.DeleteExpenseType(ctx, sqlc.DeleteExpenseTypeParams{
+		Year: int64(year),
+		Code: code,
+	})
+}
+
+func (r *TaxonomyRepository) DeleteSubtype(ctx context.Context, year int, code string) error {
+	return r.q.DeleteExpenseSubtype(ctx, sqlc.DeleteExpenseSubtypeParams{
+		Year: int64(year),
+		Code: code,
+	})
+}
+
 func (r *TaxonomyRepository) ListSubtypes(ctx context.Context, year int) ([]model.ExpenseSubtype, error) {
 	rows, err := r.q.ListExpenseSubtypes(ctx, int64(year))
 	if err != nil {

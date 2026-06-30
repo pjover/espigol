@@ -13,3 +13,9 @@ SELECT year, code, label, category FROM expense_type WHERE year = ? ORDER BY cod
 
 -- name: ListExpenseSubtypes :many
 SELECT year, code, label, type_code FROM expense_subtype WHERE year = ? ORDER BY code;
+
+-- name: DeleteExpenseType :exec
+DELETE FROM expense_type WHERE year = ? AND code = ?;
+
+-- name: DeleteExpenseSubtype :exec
+DELETE FROM expense_subtype WHERE year = ? AND code = ?;

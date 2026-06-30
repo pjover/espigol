@@ -24,6 +24,15 @@ func (q *Queries) AddPartnerSection(ctx context.Context, arg AddPartnerSectionPa
 	return err
 }
 
+const deletePartnerSectionsByPartner = `-- name: DeletePartnerSectionsByPartner :exec
+DELETE FROM partner_section WHERE partner_id = ?
+`
+
+func (q *Queries) DeletePartnerSectionsByPartner(ctx context.Context, partnerID int64) error {
+	_, err := q.db.ExecContext(ctx, deletePartnerSectionsByPartner, partnerID)
+	return err
+}
+
 const listAllPartnerSections = `-- name: ListAllPartnerSections :many
 SELECT partner_id, section_code FROM partner_section ORDER BY partner_id, section_code
 `

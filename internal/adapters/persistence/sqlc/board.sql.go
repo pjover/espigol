@@ -10,6 +10,22 @@ import (
 	"database/sql"
 )
 
+const deleteBoardAuthorization = `-- name: DeleteBoardAuthorization :exec
+DELETE FROM board_authorization
+WHERE partner_id = ? AND scope_kind = ? AND section_code IS ?
+`
+
+type DeleteBoardAuthorizationParams struct {
+	PartnerID   int64
+	ScopeKind   string
+	SectionCode sql.NullString
+}
+
+func (q *Queries) DeleteBoardAuthorization(ctx context.Context, arg DeleteBoardAuthorizationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteBoardAuthorization, arg.PartnerID, arg.ScopeKind, arg.SectionCode)
+	return err
+}
+
 const listBoardAuthorizationsByPartner = `-- name: ListBoardAuthorizationsByPartner :many
 SELECT partner_id, scope_kind, section_code
 FROM board_authorization WHERE partner_id = ? ORDER BY scope_kind, section_code

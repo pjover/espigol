@@ -275,3 +275,123 @@ func forecastAudit(ctx context.Context, r ports.RepoSet, actor model.Partner, ki
 	}
 	return r.Audit.Append(ctx, e)
 }
+
+// forecastAuditEmail records a forecast mutation with an explicit actor email (admin).
+func forecastAuditEmail(ctx context.Context, r ports.RepoSet, actorEmail string, kind model.AuditKind, id string, at time.Time) error {
+	e, err := model.NewAuditEvent(0, nil, actorEmail, kind, "ExpenseForecast", id, at, nil)
+	if err != nil {
+		return err
+	}
+	return r.Audit.Append(ctx, e)
+}
+
+// editableWindow returns the year's window if it is DRAFT or OPEN, else an error.
+func editableWindow(ctx context.Context, r ports.RepoSet, year int) (model.SubmissionWindow, error) {
+	w, ok, err := r.Windows.FindByYear(ctx, year)
+	if err != nil {
+		return model.SubmissionWindow{}, err
+	}
+	if !ok {
+		return model.SubmissionWindow{}, ErrWindowNotFound
+	}
+	if w.State() != model.WindowDraft && w.State() != model.WindowOpen {
+		return model.SubmissionWindow{}, ErrWindowNotEditable
+	}
+	return w, nil
+}
+
+// ListByYear lists every forecast for year, across all partners and scopes.
+// Admin-facing (no actor/authorization check) — used by the Previsions TUI
+// panel to show the whole year, not just one partner's forecasts.
+func (s *ForecastService) ListByYear(ctx context.Context, year int) ([]model.ExpenseForecast, error) {
+	var out []model.ExpenseForecast
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		var err error
+		out, err = r.Forecasts.ListByYear(ctx, year)
+		return err
+	})
+	return out, err
+}
+
+// AdminCreate creates a forecast on behalf of any partner, in any scope, bypassing
+// authorizeScope. The year's window must be DRAFT or OPEN.
+func (s *ForecastService) AdminCreate(ctx context.Context, actorEmail string, year, partnerID int, in ForecastInput) (model.ExpenseForecast, error) {
+	now := s.clock.Now()
+	var created model.ExpenseForecast
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		w, err := editableWindow(ctx, r, year)
+		if err != nil {
+			return err
+		}
+		scope, err := buildScope(in)
+		if err != nil {
+			return err
+		}
+		f, err := model.NewUnsavedExpenseForecast(partnerID, in.Concept, in.Description,
+			in.GrossAmount, model.ZeroMoney(), nil, in.PlannedDate, w.Year(), in.SubtypeCode, scope, now, true)
+		if err != nil {
+			return err
+		}
+		saved, err := r.Forecasts.Create(ctx, f)
+		if err != nil {
+			return err
+		}
+		created = saved
+		return forecastAuditEmail(ctx, r, actorEmail, model.AuditForecastCreated, saved.ID(), now)
+	})
+	return created, err
+}
+
+// AdminUpdate edits any forecast regardless of owner or scope, bypassing authorizeScope.
+// The year is derived from the existing forecast and its window must be DRAFT or OPEN.
+func (s *ForecastService) AdminUpdate(ctx context.Context, actorEmail string, id string, in ForecastInput) error {
+	now := s.clock.Now()
+	return s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		existing, ok, err := r.Forecasts.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrForecastNotFound
+		}
+		if _, err := editableWindow(ctx, r, existing.Year()); err != nil {
+			return err
+		}
+		scope, err := buildScope(in)
+		if err != nil {
+			return err
+		}
+		updated, err := model.NewExpenseForecast(id, existing.PartnerID(), in.Concept, in.Description,
+			in.GrossAmount, existing.ApprovedAmount(), existing.ApprovedOn(), in.PlannedDate, existing.Year(),
+			in.SubtypeCode, scope, existing.AddedOn(), existing.Enabled())
+		if err != nil {
+			return err
+		}
+		if err := r.Forecasts.Save(ctx, updated); err != nil {
+			return err
+		}
+		return forecastAuditEmail(ctx, r, actorEmail, model.AuditForecastEdited, id, now)
+	})
+}
+
+// AdminDelete deletes any forecast regardless of owner or scope, bypassing authorizeScope.
+// The year is derived from the existing forecast and its window must be DRAFT or OPEN.
+func (s *ForecastService) AdminDelete(ctx context.Context, actorEmail string, id string) error {
+	now := s.clock.Now()
+	return s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		existing, ok, err := r.Forecasts.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrForecastNotFound
+		}
+		if _, err := editableWindow(ctx, r, existing.Year()); err != nil {
+			return err
+		}
+		if err := r.Forecasts.Delete(ctx, id); err != nil {
+			return err
+		}
+		return forecastAuditEmail(ctx, r, actorEmail, model.AuditForecastDeleted, id, now)
+	})
+}

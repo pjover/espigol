@@ -27,6 +27,7 @@ type SectionRepository interface {
 	AddMembership(ctx context.Context, m model.PartnerSection) error
 	ListMembershipsByPartner(ctx context.Context, partnerID int) ([]model.PartnerSection, error)
 	ListMemberships(ctx context.Context) ([]model.PartnerSection, error)
+	RemoveMembershipsByPartner(ctx context.Context, partnerID int) error
 }
 
 // TaxonomyRepository manages ExpenseType and ExpenseSubtype.
@@ -35,6 +36,8 @@ type TaxonomyRepository interface {
 	SaveSubtype(ctx context.Context, s model.ExpenseSubtype) error
 	ListTypes(ctx context.Context, year int) ([]model.ExpenseType, error)
 	ListSubtypes(ctx context.Context, year int) ([]model.ExpenseSubtype, error)
+	DeleteType(ctx context.Context, year int, code string) error
+	DeleteSubtype(ctx context.Context, year int, code string) error
 }
 
 // WindowRepository manages SubmissionWindow aggregates.
@@ -72,4 +75,5 @@ type AuditLog interface {
 type BoardAuthorizationRepository interface {
 	Save(ctx context.Context, a model.BoardAuthorization) error
 	ListByPartner(ctx context.Context, partnerID int) ([]model.BoardAuthorization, error)
+	Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) error
 }

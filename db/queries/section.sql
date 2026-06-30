@@ -16,3 +16,6 @@ SELECT partner_id, section_code FROM partner_section WHERE partner_id = ? ORDER 
 
 -- name: ListAllPartnerSections :many
 SELECT partner_id, section_code FROM partner_section ORDER BY partner_id, section_code;
+
+-- name: DeletePartnerSectionsByPartner :exec
+DELETE FROM partner_section WHERE partner_id = ?;

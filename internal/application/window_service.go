@@ -24,6 +24,17 @@ func NewWindowService(tx ports.TxManager, renderer ports.ReportRenderer, clock p
 	return &WindowService{tx: tx, renderer: renderer, clock: clock}
 }
 
+// List returns every submission window, for admin/TUI listing purposes.
+func (s *WindowService) List(ctx context.Context) ([]model.SubmissionWindow, error) {
+	var out []model.SubmissionWindow
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		var err error
+		out, err = r.Windows.List(ctx)
+		return err
+	})
+	return out, err
+}
+
 // CreateYear creates a new DRAFT window, copying the most recent prior year's
 // limits and taxonomy.
 func (s *WindowService) CreateYear(ctx context.Context, year int) (model.SubmissionWindow, error) {
@@ -181,7 +192,7 @@ func (s *WindowService) Close(ctx context.Context, year int) (model.Report, erro
 			return ErrWrongState
 		}
 
-		rd, err := s.computeReport(ctx, r, w)
+		rd, err := computeReportData(ctx, r, w)
 		if err != nil {
 			return err
 		}
@@ -207,8 +218,8 @@ func (s *WindowService) Close(ctx context.Context, year int) (model.Report, erro
 	return saved, err
 }
 
-// computeReport gathers inputs from the tx repos and runs the allocation.
-func (s *WindowService) computeReport(ctx context.Context, r ports.RepoSet, w model.SubmissionWindow) (report.ReportData, error) {
+// computeReportData gathers inputs from the tx repos and runs the allocation.
+func computeReportData(ctx context.Context, r ports.RepoSet, w model.SubmissionWindow) (report.ReportData, error) {
 	year := w.Year()
 	all, err := r.Forecasts.ListByYear(ctx, year)
 	if err != nil {
@@ -309,7 +320,7 @@ func (s *WindowService) Amend(ctx context.Context, year int) (model.Report, erro
 			return ErrWrongState
 		}
 
-		rd, err := s.computeReport(ctx, r, w)
+		rd, err := computeReportData(ctx, r, w)
 		if err != nil {
 			return err
 		}

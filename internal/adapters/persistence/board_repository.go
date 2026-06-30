@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/pjover/espigol/internal/adapters/persistence/mapper"
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
@@ -18,6 +19,18 @@ func NewBoardAuthorizationRepository(q *sqlc.Queries) *BoardAuthorizationReposit
 
 func (r *BoardAuthorizationRepository) Save(ctx context.Context, a model.BoardAuthorization) error {
 	return r.q.UpsertBoardAuthorization(ctx, mapper.BoardAuthToRow(a))
+}
+
+func (r *BoardAuthorizationRepository) Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) error {
+	var section sql.NullString
+	if sectionCode != "" {
+		section = sql.NullString{String: sectionCode, Valid: true}
+	}
+	return r.q.DeleteBoardAuthorization(ctx, sqlc.DeleteBoardAuthorizationParams{
+		PartnerID:   int64(partnerID),
+		ScopeKind:   string(scopeKind),
+		SectionCode: section,
+	})
 }
 
 func (r *BoardAuthorizationRepository) ListByPartner(ctx context.Context, partnerID int) ([]model.BoardAuthorization, error) {

@@ -154,6 +154,39 @@ func TestForecastService_BoardScopeAuthorization(t *testing.T) {
 	}
 }
 
+func TestForecastService_ListByYear(t *testing.T) {
+	svc, conn := newFcSvc(t)
+	seedOpen2026(t, conn)
+	ctx := context.Background()
+	soci := partner(t, conn, 1)
+	board := partner(t, conn, 7)
+
+	if _, err := svc.Create(ctx, soci, partnerInput("500.00")); err != nil {
+		t.Fatalf("create soci forecast: %v", err)
+	}
+	common := application.ForecastInput{Concept: "Comú", GrossAmount: mustMoney(t, "100.00"),
+		PlannedDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), SubtypeCode: "a1", ScopeKind: model.ScopeCommon}
+	if _, err := svc.Create(ctx, board, common); err != nil {
+		t.Fatalf("create board forecast: %v", err)
+	}
+
+	got, err := svc.ListByYear(ctx, 2026)
+	if err != nil {
+		t.Fatalf("ListByYear: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("ListByYear returned %d forecasts, want 2 (all partners)", len(got))
+	}
+
+	empty, err := svc.ListByYear(ctx, 2099)
+	if err != nil {
+		t.Fatalf("ListByYear empty year: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("ListByYear(2099) = %d items, want 0", len(empty))
+	}
+}
+
 func TestForecastService_RejectsWhenNoOpenWindow(t *testing.T) {
 	svc, conn := newFcSvc(t)
 	// no window seeded
