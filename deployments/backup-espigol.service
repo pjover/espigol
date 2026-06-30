@@ -1,0 +1,10 @@
+[Unit]
+Description=Espigol nightly SQLite backup
+
+[Service]
+Type=oneshot
+User=espigol
+Group=espigol
+EnvironmentFile=/etc/espigol/espigol.env
+Environment=ESPIGOL_HOME=/var/lib/espigol
+ExecStart=/usr/local/bin/backup-espigol.sh
