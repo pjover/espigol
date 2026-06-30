@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/pjover/espigol/internal/adapters/tui"
 	"github.com/pjover/espigol/internal/app"
 	"github.com/pjover/espigol/internal/config"
 	"github.com/pjover/espigol/internal/wire"
@@ -37,10 +36,10 @@ func main() {
 			log.Fatalf("espigol server: %v", err)
 		}
 	default:
-		// TODO(Task 13): replace with wire.TUI(cfg), which assembles the
-		// full Deps (application services + report.ReportExporter) and the
-		// real panel set before calling tui.NewApp.
-		app := tui.NewApp(tui.Deps{Cfg: cfg}, nil)
+		app, err := wire.TUI(cfg)
+		if err != nil {
+			log.Fatalf("espigol tui: %v", err)
+		}
 		if err := app.Run(); err != nil {
 			log.Fatalf("espigol tui: %v", err)
 		}

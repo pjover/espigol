@@ -1,4 +1,5 @@
-// Package wire assembles the socis web server for `espigol --server`.
+// Package wire assembles the socis web server for `espigol --server` and the
+// admin TUI for `espigol` (default mode).
 package wire
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
 	reportadapter "github.com/pjover/espigol/internal/adapters/report"
 	"github.com/pjover/espigol/internal/adapters/system"
+	"github.com/pjover/espigol/internal/adapters/tui"
 	"github.com/pjover/espigol/internal/adapters/web"
 	"github.com/pjover/espigol/internal/application"
 	"github.com/pjover/espigol/internal/config"
@@ -45,4 +47,41 @@ func Server(cfg *config.Config) (*web.Server, error) {
 		Secure:    !authn.IsDev(),
 	}
 	return web.NewServer(deps), nil
+}
+
+// TUI opens the database and assembles the admin TUI, with the real
+// PDFRenderer wired into WindowService.Close (the deferred Phase-5 wiring,
+// no longer the no-op).
+func TUI(cfg *config.Config) (*tui.App, error) {
+	conn, err := db.Open(cfg.DBPath)
+	if err != nil {
+		return nil, fmt.Errorf("opening database: %w", err)
+	}
+	clock := system.SystemClock{}
+	txm := persistence.NewTxManager(conn)
+
+	pdf := reportadapter.PDFRenderer{BusinessName: cfg.BusinessName, LogoPath: cfg.LogoPath}
+
+	deps := tui.Deps{
+		Partners:  application.NewPartnerService(txm, clock, cfg.Admin.Email),
+		Sections:  application.NewSectionService(txm, clock, cfg.Admin.Email),
+		Taxonomy:  application.NewTaxonomyService(txm, clock, cfg.Admin.Email),
+		BoardAuth: application.NewBoardAuthorizationService(txm, clock, cfg.Admin.Email),
+		Forecasts: application.NewForecastService(txm, clock),
+		Windows:   application.NewWindowService(txm, pdf, clock),
+		Reports:   application.NewReportService(txm),
+		Exporter:  reportadapter.NewReportExporter(pdf),
+		Cfg:       cfg,
+	}
+
+	panels := []tui.Panel{
+		tui.NewYearsPanel(deps),
+		tui.NewPartnersPanel(deps),
+		tui.NewSectionsPanel(deps),
+		tui.NewTaxonomyPanel(deps),
+		tui.NewForecastsPanel(deps),
+		tui.NewReportsPanel(deps),
+	}
+
+	return tui.NewApp(deps, panels), nil
 }
