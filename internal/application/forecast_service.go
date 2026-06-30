@@ -300,6 +300,19 @@ func editableWindow(ctx context.Context, r ports.RepoSet, year int) (model.Submi
 	return w, nil
 }
 
+// ListByYear lists every forecast for year, across all partners and scopes.
+// Admin-facing (no actor/authorization check) — used by the Previsions TUI
+// panel to show the whole year, not just one partner's forecasts.
+func (s *ForecastService) ListByYear(ctx context.Context, year int) ([]model.ExpenseForecast, error) {
+	var out []model.ExpenseForecast
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		var err error
+		out, err = r.Forecasts.ListByYear(ctx, year)
+		return err
+	})
+	return out, err
+}
+
 // AdminCreate creates a forecast on behalf of any partner, in any scope, bypassing
 // authorizeScope. The year's window must be DRAFT or OPEN.
 func (s *ForecastService) AdminCreate(ctx context.Context, actorEmail string, year, partnerID int, in ForecastInput) (model.ExpenseForecast, error) {

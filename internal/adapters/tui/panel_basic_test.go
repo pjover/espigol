@@ -49,7 +49,7 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 		Windows:   application.NewWindowService(txm, appreport.NoopRenderer{}, clock),
 		Reports:   application.NewReportService(txm),
 		Exporter:  exporter,
-		Cfg:       &config.Config{OutputDir: t.TempDir()},
+		Cfg:       &config.Config{OutputDir: t.TempDir(), Admin: struct{ Email string }{Email: testAdminEmail}},
 	}
 	return deps, q
 }
