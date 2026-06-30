@@ -22,4 +22,9 @@ var (
 	ErrSectionNotFound    = errors.New("section not found")
 	ErrSectionExists      = errors.New("a section with that code already exists")
 	ErrSectionInUse       = errors.New("section is in use by a forecast in a non-closed submission window")
+
+	ErrTaxonomyLocked = errors.New("taxonomy can only be modified while the submission window is in DRAFT state")
+	ErrTypeInUse      = errors.New("expense type is in use by a subtype")
+	ErrSubtypeInUse   = errors.New("expense subtype is in use by a forecast")
+	ErrTypeNotFound   = errors.New("expense type not found")
 )
