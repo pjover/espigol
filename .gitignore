@@ -15,3 +15,6 @@
 *.out
 
 espigol.code-workspace
+
+# Cross-compiled deployment artifacts
+/dist/
