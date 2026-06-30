@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const deleteBoardAuthorization = `-- name: DeleteBoardAuthorization :exec
+const deleteBoardAuthorization = `-- name: DeleteBoardAuthorization :execrows
 DELETE FROM board_authorization
 WHERE partner_id = ? AND scope_kind = ? AND section_code IS ?
 `
@@ -21,9 +21,14 @@ type DeleteBoardAuthorizationParams struct {
 	SectionCode sql.NullString
 }
 
-func (q *Queries) DeleteBoardAuthorization(ctx context.Context, arg DeleteBoardAuthorizationParams) error {
-	_, err := q.db.ExecContext(ctx, deleteBoardAuthorization, arg.PartnerID, arg.ScopeKind, arg.SectionCode)
-	return err
+// section_code uses `IS` (not `=`) so a NULL bind matches COMMON-scope rows,
+// whose section_code is NULL (SQL `NULL = NULL` is never true).
+func (q *Queries) DeleteBoardAuthorization(ctx context.Context, arg DeleteBoardAuthorizationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteBoardAuthorization, arg.PartnerID, arg.ScopeKind, arg.SectionCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listBoardAuthorizationsByPartner = `-- name: ListBoardAuthorizationsByPartner :many

@@ -21,7 +21,9 @@ func (r *BoardAuthorizationRepository) Save(ctx context.Context, a model.BoardAu
 	return r.q.UpsertBoardAuthorization(ctx, mapper.BoardAuthToRow(a))
 }
 
-func (r *BoardAuthorizationRepository) Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) error {
+// Remove deletes the matching authorization and returns the number of rows
+// removed (0 when no such authorization existed).
+func (r *BoardAuthorizationRepository) Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) (int64, error) {
 	var section sql.NullString
 	if sectionCode != "" {
 		section = sql.NullString{String: sectionCode, Valid: true}

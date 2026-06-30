@@ -264,3 +264,24 @@ func TestBoardAuthorizationService_RevokeAuditAppended(t *testing.T) {
 		t.Errorf("expected at least 2 audit events (grant + revoke) for partner 10, got %d", count)
 	}
 }
+
+func TestBoardAuthorizationService_RevokeNonexistentDoesNotAudit(t *testing.T) {
+	svc, conn := newBaSvc(t)
+	ctx := context.Background()
+	seedBoardPartner(t, conn, 11, true)
+
+	// Revoke an authorization that was never granted: no row removed, no audit.
+	if err := svc.Revoke(ctx, 11, model.ScopeCommon, ""); err != nil {
+		t.Fatalf("Revoke: %v", err)
+	}
+
+	audits, err := persistence.NewAuditLog(sqlc.New(conn)).List(ctx)
+	if err != nil {
+		t.Fatalf("List audits: %v", err)
+	}
+	for _, a := range audits {
+		if a.EntityType() == "BoardAuthorization" && a.EntityID() == "11" {
+			t.Errorf("no-op Revoke should not append an audit event, found %+v", a)
+		}
+	}
+}

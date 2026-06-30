@@ -144,21 +144,26 @@ func TestAdminMutations(t *testing.T) {
 		}
 
 		// Remove the section-scoped one.
-		if err := repo.Remove(ctx, 9, model.ScopeSection, "oliva"); err != nil {
-			t.Fatalf("Remove(section): %v", err)
+		if n, err := repo.Remove(ctx, 9, model.ScopeSection, "oliva"); err != nil || n != 1 {
+			t.Fatalf("Remove(section): n=%d err=%v", n, err)
 		}
 		auths, err = repo.ListByPartner(ctx, 9)
 		if err != nil || len(auths) != 1 {
 			t.Fatalf("after Remove(section): len=%d err=%v", len(auths), err)
 		}
 
-		// Remove the common one (sectionCode = "").
-		if err := repo.Remove(ctx, 9, model.ScopeCommon, ""); err != nil {
-			t.Fatalf("Remove(common): %v", err)
+		// Remove the common one (sectionCode = ""), proving the NULL-safe match.
+		if n, err := repo.Remove(ctx, 9, model.ScopeCommon, ""); err != nil || n != 1 {
+			t.Fatalf("Remove(common): n=%d err=%v", n, err)
 		}
 		auths, err = repo.ListByPartner(ctx, 9)
 		if err != nil || len(auths) != 0 {
 			t.Fatalf("after Remove(common): len=%d err=%v", len(auths), err)
+		}
+
+		// Removing again matches nothing.
+		if n, err := repo.Remove(ctx, 9, model.ScopeCommon, ""); err != nil || n != 0 {
+			t.Fatalf("Remove(common) no-op: n=%d err=%v", n, err)
 		}
 	})
 }
