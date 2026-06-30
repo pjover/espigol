@@ -127,6 +127,50 @@ func TestSectionService_UpdateToInactiveInUseReturnsErrSectionInUse(t *testing.T
 	}
 }
 
+func TestSectionService_UpdateToInactiveNotReferencedSucceeds(t *testing.T) {
+	svc, _ := newScSvc(t)
+	ctx := context.Background()
+
+	in := vinyaInput()
+	if _, err := svc.Create(ctx, in); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	deactivated := in
+	deactivated.Active = false
+	if err := svc.Update(ctx, "vinya", deactivated); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	s := findSection(t, svc, "vinya")
+	if s.Active() {
+		t.Errorf("section still active after Update: %+v", s)
+	}
+}
+
+func TestSectionService_UpdateToInactiveClosedYearOnlySucceeds(t *testing.T) {
+	svc, conn := newScSvc(t)
+	ctx := context.Background()
+
+	in := vinyaInput()
+	if _, err := svc.Create(ctx, in); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	seedClosedWindowWithSectionForecast(t, conn, "vinya")
+
+	deactivated := in
+	deactivated.Active = false
+	if err := svc.Update(ctx, "vinya", deactivated); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	s := findSection(t, svc, "vinya")
+	if s.Active() {
+		t.Errorf("section still active after Update: %+v", s)
+	}
+}
+
 func TestSectionService_AuditActorIsAdminEmail(t *testing.T) {
 	svc, conn := newScSvc(t)
 	ctx := context.Background()
@@ -211,6 +255,56 @@ func seedOpenWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode s
 	gross := model.MoneyOf(100)
 	f, err := model.NewUnsavedExpenseForecast(1, "Concept", "", gross, model.ZeroMoney(), nil,
 		time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), 2026, "a1", scope, scNow(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fr := persistence.NewForecastRepository(conn, q)
+	if _, err := fr.Create(ctx, f); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// seedClosedWindowWithSectionForecast seeds a CLOSED 2025 window, taxonomy
+// a1/A, a partner, and a forecast scoped to the given section code. Because
+// the window is closed, an in-use check against that section must NOT
+// reject deactivation.
+func seedClosedWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode string) {
+	t.Helper()
+	q := sqlc.New(conn)
+	ctx := context.Background()
+
+	w, err := model.NewSubmissionWindow(2025, model.WindowClosed, ptrTime(scNow()), ptrTime(scNow()),
+		time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC), model.MoneyOf(30000), model.MoneyOf(70000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.NewWindowRepository(q).Save(ctx, w); err != nil {
+		t.Fatal(err)
+	}
+
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2025, "A", "[a]", model.CategoryCurrent)
+	if err := tax.SaveType(ctx, ta); err != nil {
+		t.Fatal(err)
+	}
+	sa, _ := model.NewExpenseSubtype(2025, "a1", "[a1]", "A")
+	if err := tax.SaveSubtype(ctx, sa); err != nil {
+		t.Fatal(err)
+	}
+
+	pr := persistence.NewPartnerRepository(q)
+	soci, _ := model.NewPartner(1, "Soci U", "", "", "u1@e.test", "", model.Productor, 0, scNow(), false)
+	if err := pr.Save(ctx, soci); err != nil {
+		t.Fatal(err)
+	}
+
+	scope, err := model.NewSectionScope(sectionCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gross := model.MoneyOf(100)
+	f, err := model.NewUnsavedExpenseForecast(1, "Concept", "", gross, model.ZeroMoney(), nil,
+		time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC), 2025, "a1", scope, scNow(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
