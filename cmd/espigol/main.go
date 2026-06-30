@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -14,7 +15,15 @@ import (
 	"github.com/pjover/espigol/internal/wire"
 )
 
+// version is overridden at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
+	if app.ParseMode(os.Args[1:]) == app.ModeVersion {
+		fmt.Println("espigol", version)
+		return
+	}
+
 	home, err := config.ResolveHome()
 	if err != nil {
 		log.Fatalf("espigol: %v", err)
