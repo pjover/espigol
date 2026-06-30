@@ -12,7 +12,12 @@ import (
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
-// yearsLoadedMsg carries the result of (re)loading the windows list.
+// yearsLoadedMsg carries the result of (re)loading the windows list. err is
+// either a plain load failure, or — when this message follows a mutation
+// (mutateCmd/confirmCmd) — the mutation's own error, which always takes
+// priority over the reload's (almost always nil) error. This is what lets
+// Detail() show why an Open/Close/Amend/CreateYear was rejected instead of
+// silently discarding it.
 type yearsLoadedMsg struct {
 	windows []model.SubmissionWindow
 	err     error
@@ -54,12 +59,19 @@ func (p yearsPanel) loadCmd() tea.Cmd {
 	}
 }
 
-// mutateCmd wraps a service call so its error surfaces as a reload (the
-// panel always reloads after a mutation, regardless of success/failure).
+// mutateCmd wraps a service call: if fn fails, the mutation error is what
+// gets surfaced to the panel (the list is still reloaded so the view stays
+// fresh, but the reload's own nil error must never clobber a real failure —
+// see yearsLoadedMsg.err's doc comment). This is the convention every
+// mutating panel (Anys/Socis/Seccions, and Task 12's panels) should mirror.
 func (p yearsPanel) mutateCmd(fn func(ctx context.Context) error) tea.Cmd {
 	return func() tea.Msg {
-		_ = fn(context.Background())
-		windows, err := p.loadWindows(context.Background())
+		mutateErr := fn(context.Background())
+		windows, loadErr := p.loadWindows(context.Background())
+		err := loadErr
+		if mutateErr != nil {
+			err = mutateErr
+		}
 		return yearsLoadedMsg{windows: windows, err: err}
 	}
 }
@@ -141,7 +153,9 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 }
 
 // confirmCmd builds a confirm modal that, on "y", calls fn(ctx, year) for
-// the currently selected window's year.
+// the currently selected window's year. As with mutateCmd, a mutation
+// failure (e.g. ErrWrongState trying to close a DRAFT year) takes priority
+// over the subsequent reload's error so it actually reaches p.err.
 func (p yearsPanel) confirmCmd(message string, fn func(ctx context.Context, year int) error) tea.Cmd {
 	w, ok := p.selectedWindow()
 	if !ok {
@@ -149,8 +163,12 @@ func (p yearsPanel) confirmCmd(message string, fn func(ctx context.Context, year
 	}
 	year := w.Year()
 	onConfirm := func() tea.Msg {
-		_ = fn(context.Background(), year)
-		windows, err := p.loadWindows(context.Background())
+		mutateErr := fn(context.Background(), year)
+		windows, loadErr := p.loadWindows(context.Background())
+		err := loadErr
+		if mutateErr != nil {
+			err = mutateErr
+		}
 		return yearsLoadedMsg{windows: windows, err: err}
 	}
 	return openModalCmd(newConfirmModal(message, onConfirm))
@@ -201,10 +219,7 @@ func (p yearsPanel) View(width, height int) string {
 func (p yearsPanel) Detail() string {
 	w, ok := p.selectedWindow()
 	if !ok {
-		if p.err != nil {
-			return redStyle.Render(p.err.Error())
-		}
-		return ""
+		return errDetail(p.err)
 	}
 	opened := "-"
 	if w.OpenedAt() != nil {
@@ -214,8 +229,12 @@ func (p yearsPanel) Detail() string {
 	if w.ClosedAt() != nil {
 		closed = w.ClosedAt().Format("2006-01-02")
 	}
-	return fmt.Sprintf("Any %d  ·  Estat: %s  ·  Obert: %s  ·  Tancat: %s  ·  Límit corrent: %s  ·  Límit inversió: %s",
+	detail := fmt.Sprintf("Any %d  ·  Estat: %s  ·  Obert: %s  ·  Tancat: %s  ·  Límit corrent: %s  ·  Límit inversió: %s",
 		w.Year(), w.State(), opened, closed, w.CurrentExpenseLimit(), w.InvestmentExpenseLimit())
+	if errLine := errDetail(p.err); errLine != "" {
+		detail += "\n" + errLine
+	}
+	return detail
 }
 
 func (p yearsPanel) Actions() []Action {

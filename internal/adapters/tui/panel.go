@@ -2,6 +2,17 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
+// errDetail renders a panel's mutation/load error (p.err) as a red "Error: "
+// line for use in Detail(), or "" if err is nil. Centralised here so the
+// Anys/Socis/Seccions panels (and Task 12's) render mutation failures the
+// same way instead of each inventing its own framing.
+func errDetail(err error) string {
+	if err == nil {
+		return ""
+	}
+	return redStyle.Render("Error: " + err.Error())
+}
+
 // Action describes a single-letter keybinding a panel offers, used to render
 // the bottom help/action line and to document the panel's behaviour.
 type Action struct {

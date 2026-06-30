@@ -12,7 +12,12 @@ import (
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
-// partnersLoadedMsg carries the result of (re)loading the partner list.
+// partnersLoadedMsg carries the result of (re)loading the partner list. err
+// is either a plain load failure, or — when this message follows a
+// mutation (reloadCmd) — the mutation's own error, which always takes
+// priority over the reload's (almost always nil) error. This is what lets
+// Detail() show why a Create/Update/SetBoardMember/SetSectionMemberships
+// was rejected instead of silently discarding it.
 type partnersLoadedMsg struct {
 	partners []model.Partner
 	err      error
@@ -41,10 +46,17 @@ func (p partnersPanel) loadCmd() tea.Cmd {
 	}
 }
 
+// reloadCmd wraps a service call: if run fails, the mutation error is what
+// gets surfaced to the panel (the list is still reloaded so the view stays
+// fresh, but the reload's own nil error must never clobber a real failure).
 func (p partnersPanel) reloadCmd(run func(ctx context.Context) error) tea.Cmd {
 	return func() tea.Msg {
-		_ = run(context.Background())
-		partners, err := p.deps.Partners.List(context.Background())
+		mutateErr := run(context.Background())
+		partners, loadErr := p.deps.Partners.List(context.Background())
+		err := loadErr
+		if mutateErr != nil {
+			err = mutateErr
+		}
 		return partnersLoadedMsg{partners: partners, err: err}
 	}
 }
@@ -233,14 +245,15 @@ func (p partnersPanel) View(width, height int) string {
 func (p partnersPanel) Detail() string {
 	partner, ok := p.selectedPartner()
 	if !ok {
-		if p.err != nil {
-			return redStyle.Render(p.err.Error())
-		}
-		return ""
+		return errDetail(p.err)
 	}
-	return fmt.Sprintf("Id %d  ·  %s %s  ·  %s  ·  %s  ·  %s  ·  Tipus: %s  ·  RIA: %d",
+	detail := fmt.Sprintf("Id %d  ·  %s %s  ·  %s  ·  %s  ·  %s  ·  Tipus: %s  ·  RIA: %d",
 		partner.ID(), partner.Name(), partner.Surname(), partner.VatCode(), partner.Email(), partner.Mobile(),
 		partner.PartnerType(), partner.RiaNumber())
+	if errLine := errDetail(p.err); errLine != "" {
+		detail += "\n" + errLine
+	}
+	return detail
 }
 
 func (p partnersPanel) Actions() []Action {

@@ -260,6 +260,75 @@ func TestYearsPanel_CloseOpensConfirmModal(t *testing.T) {
 	}
 }
 
+// TestYearsPanel_CloseRejectedSurfacesError drives a mutation the
+// WindowService rejects (closing a DRAFT year, which fails with
+// ErrWrongState) and asserts the failure becomes visible in Detail()/View()
+// instead of being silently discarded by the subsequent reload's nil error.
+func TestYearsPanel_CloseRejectedSurfacesError(t *testing.T) {
+	deps, q := testDeps(t)
+	seedWindow(t, q, 2026, model.WindowDraft)
+
+	p := NewYearsPanel(deps)
+	_, cmd := p.Update(panelInitMsg{})
+	loaded := runCmd(t, cmd).(yearsLoadedMsg)
+	p, _ = p.Update(loaded)
+
+	_, cmd = p.Update(pKey("c"))
+	msg := runCmd(t, cmd)
+	modalMsg, ok := msg.(openModalMsg)
+	if !ok {
+		t.Fatalf("expected openModalMsg, got %T", msg)
+	}
+	confirm, ok := modalMsg.modal.(confirmModal)
+	if !ok {
+		t.Fatalf("expected confirmModal, got %T", modalMsg.modal)
+	}
+
+	// Confirm with "y": Windows.Close should reject a DRAFT window with
+	// ErrWrongState; that error must reach the resulting yearsLoadedMsg
+	// rather than being clobbered by the reload's nil error.
+	_, confirmCmd := confirm.Update(pKey("y"))
+	msgs := drainMsgs(runCmd(t, confirmCmd))
+	var sawLoaded bool
+	for _, m := range msgs {
+		if yl, ok := m.(yearsLoadedMsg); ok {
+			sawLoaded = true
+			if yl.err == nil {
+				t.Fatal("expected yearsLoadedMsg.err to carry the rejected Close's error, got nil")
+			}
+			p, _ = p.Update(yl)
+		}
+	}
+	if !sawLoaded {
+		t.Fatal("expected the confirm to trigger a reload (yearsLoadedMsg)")
+	}
+
+	detail := p.Detail()
+	if !strings.Contains(detail, "Error") {
+		t.Errorf("Detail() = %q, want it to contain an error indication", detail)
+	}
+	if !strings.Contains(detail, "current state") {
+		// application.ErrWrongState's message; the underlying error text
+		// must be present verbatim, not just a generic "Error" label.
+		t.Errorf("Detail() = %q, want it to contain the underlying error message", detail)
+	}
+
+	view := p.View(80, 20)
+	combined := detail + view
+	if strings.Contains(combined, "<nil>") {
+		t.Errorf("expected no nil-error artefacts in rendered output, got %q", combined)
+	}
+
+	// Window must remain DRAFT: the rejected mutation must not have applied.
+	w, _, err := persistence.NewWindowRepository(q).FindByYear(context.Background(), 2026)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.State() != model.WindowDraft {
+		t.Errorf("persisted window state = %s, want DRAFT (rejected Close must not apply)", w.State())
+	}
+}
+
 func TestYearsPanel_NOpensCreateYearForm(t *testing.T) {
 	deps, _ := testDeps(t)
 	p := NewYearsPanel(deps)
