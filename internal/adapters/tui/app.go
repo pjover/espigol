@@ -180,9 +180,25 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if len(m.panels) == 0 {
 		return m, nil
 	}
-	panel, cmd := m.panels[m.focused].Update(msg)
-	m.panels[m.focused] = panel
-	return m, cmd
+
+	// Key messages go only to the focused panel (panel-specific actions).
+	// All other messages (async load results like partnersLoadedMsg,
+	// yearsLoadedMsg, etc.) are broadcast to every panel so that background
+	// loads complete regardless of which panel currently has focus.
+	if _, isKey := msg.(tea.KeyMsg); isKey {
+		panel, cmd := m.panels[m.focused].Update(msg)
+		m.panels[m.focused] = panel
+		return m, cmd
+	}
+	var cmds []tea.Cmd
+	for i, p := range m.panels {
+		updated, cmd := p.Update(msg)
+		m.panels[i] = updated
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return m, tea.Batch(cmds...)
 }
 
 // nextFocus computes the next focused panel index, wrapping around, moving
