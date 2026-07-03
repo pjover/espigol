@@ -35,7 +35,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("espigol: %v", err)
 	}
-
 	switch app.ParseMode(os.Args[1:]) {
 	case app.ModeServer:
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
