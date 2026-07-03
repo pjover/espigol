@@ -28,6 +28,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("espigol: %v", err)
 	}
+	if err := config.EnsureHome(home); err != nil {
+		log.Fatalf("espigol: %v", err)
+	}
 	cfg, err := config.Load(home)
 	if err != nil {
 		log.Fatalf("espigol: %v", err)

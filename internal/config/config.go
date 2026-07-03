@@ -45,6 +45,60 @@ type Config struct {
 	}
 }
 
+// EnsureHome creates the espigol home directory tree (home/, reports/,
+// backups/) and writes a default config.yaml if one is not already present.
+// It is idempotent and safe to call on an already-initialised home.
+func EnsureHome(home string) error {
+	for _, dir := range []string{
+		home,
+		filepath.Join(home, "reports"),
+		filepath.Join(home, "backups"),
+	} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("creating %s: %w", dir, err)
+		}
+	}
+	cfgPath := filepath.Join(home, "config.yaml")
+	if _, err := os.Stat(cfgPath); err == nil {
+		return nil // already present — don't overwrite
+	}
+	return os.WriteFile(cfgPath, defaultConfigYAML(home), 0o600)
+}
+
+func defaultConfigYAML(home string) []byte {
+	return []byte(fmt.Sprintf(`# Espígol configuration — edit as needed.
+# All keys can be overridden with ESPIGOL_<KEY> environment variables
+# (e.g. ESPIGOL_SERVER_PORT=9090, ESPIGOL_ADMIN_EMAIL=admin@example.org).
+
+business:
+  name: "Cooperativa d'Estellencs"
+
+server:
+  port: 8080
+
+output:
+  dir: %q
+
+backup:
+  dir: %q
+
+logo:
+  path: %q
+
+oauth:
+  client_id: ""
+  client_secret: ""
+  redirect_url: ""
+
+admin:
+  email: "admin@espigol"
+`,
+		filepath.Join(home, "reports"),
+		filepath.Join(home, "backups"),
+		filepath.Join(home, "logo.png"),
+	))
+}
+
 // Load reads <home>/config.yaml if present, applies defaults, and allows
 // environment overrides (prefix ESPIGOL_, nested keys joined with "_").
 // A missing config file is not an error.
