@@ -21,7 +21,7 @@ func NewSection(code, label string, active bool, displayOrder int) (Section, err
 
 func (s Section) Code() string      { return s.code }
 func (s Section) Label() string     { return s.label }
-func (s Section) Active() bool       { return s.active }
+func (s Section) Active() bool      { return s.active }
 func (s Section) DisplayOrder() int { return s.displayOrder }
 
 type PartnerSection struct {

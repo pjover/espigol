@@ -303,6 +303,39 @@ func buildSubtypeCategory(ctx context.Context, r ports.RepoSet, year int) (map[s
 	return out, nil
 }
 
+// Reopen transitions a CLOSED window back to OPEN, clearing the closed-at
+// timestamp so that forecasts can be submitted again.
+func (s *WindowService) Reopen(ctx context.Context, year int) error {
+	now := s.clock.Now()
+	return s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		w, ok, err := r.Windows.FindByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrWindowNotFound
+		}
+		if w.State() != model.WindowClosed {
+			return ErrWrongState
+		}
+
+		all, err := r.Windows.List(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ow := range all {
+			if ow.Year() != year && ow.State() == model.WindowOpen {
+				return ErrAnotherWindowOpen
+			}
+		}
+
+		if err := r.Windows.Save(ctx, w.WithState(model.WindowOpen)); err != nil {
+			return err
+		}
+		return appendAudit(ctx, r, model.AuditWindowOpened, "SubmissionWindow", strconv.Itoa(year), now, "reopen")
+	})
+}
+
 // Amend re-runs the allocation for a CLOSED year, supersedes the current report,
 // inserts a new one, and updates approved amounts — without changing window state.
 func (s *WindowService) Amend(ctx context.Context, year int) (model.Report, error) {

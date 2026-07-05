@@ -22,11 +22,11 @@ func NewReport(id, year int, generatedAt time.Time, snapshotJSON string, pdf []b
 	return Report{id, year, generatedAt, snapshotJSON, pdf, supersededAt}, nil
 }
 
-func (r Report) ID() int                { return r.id }
-func (r Report) Year() int              { return r.year }
-func (r Report) GeneratedAt() time.Time { return r.generatedAt }
-func (r Report) SnapshotJSON() string   { return r.snapshotJSON }
-func (r Report) Pdf() []byte            { return r.pdf }
+func (r Report) ID() int                  { return r.id }
+func (r Report) Year() int                { return r.year }
+func (r Report) GeneratedAt() time.Time   { return r.generatedAt }
+func (r Report) SnapshotJSON() string     { return r.snapshotJSON }
+func (r Report) Pdf() []byte              { return r.pdf }
 func (r Report) SupersededAt() *time.Time { return r.supersededAt }
 
 func (r Report) WithSupersededAt(t time.Time) Report { r.supersededAt = &t; return r }

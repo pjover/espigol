@@ -316,6 +316,6 @@ func NewApp(deps Deps, panels []Panel) *App {
 
 // Run starts the Bubble Tea program and blocks until the user quits.
 func (a *App) Run() error {
-	_, err := tea.NewProgram(a.model).Run()
+	_, err := tea.NewProgram(a.model, tea.WithAltScreen()).Run()
 	return err
 }

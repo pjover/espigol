@@ -24,13 +24,13 @@ type Partner struct {
 
 // ExpenseType holds a row from the legacy expense_type table.
 type ExpenseType struct {
-	Year           int
+	Year                  int
 	Code, Label, Category string
 }
 
 // ExpenseSubtype holds a row from the legacy expense_subtype table.
 type ExpenseSubtype struct {
-	Year               int
+	Year                  int
 	Code, Label, TypeCode string
 }
 

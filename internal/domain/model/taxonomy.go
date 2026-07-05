@@ -19,9 +19,9 @@ func NewExpenseType(year int, code, label string, cat ExpenseCategory) (ExpenseT
 	return ExpenseType{year, code, label, cat}, nil
 }
 
-func (t ExpenseType) Year() int                { return t.year }
-func (t ExpenseType) Code() string             { return t.code }
-func (t ExpenseType) Label() string            { return t.label }
+func (t ExpenseType) Year() int                 { return t.year }
+func (t ExpenseType) Code() string              { return t.code }
+func (t ExpenseType) Label() string             { return t.label }
 func (t ExpenseType) Category() ExpenseCategory { return t.category }
 
 type ExpenseSubtype struct {

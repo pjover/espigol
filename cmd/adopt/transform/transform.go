@@ -318,4 +318,3 @@ func mapScope(catalan string) (model.ExpenseScope, error) {
 		return model.ExpenseScope{}, fmt.Errorf("unknown legacy scope %q", catalan)
 	}
 }
-

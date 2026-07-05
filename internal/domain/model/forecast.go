@@ -59,9 +59,9 @@ func NewUnsavedExpenseForecast(partnerID int, concept, description string,
 		approvedOn, plannedDate, year, subtypeCode, scope, addedOn, enabled}, nil
 }
 
-func (f ExpenseForecast) ID() string           { return f.id }
-func (f ExpenseForecast) PartnerID() int        { return f.partnerID }
-func (f ExpenseForecast) Concept() string       { return f.concept }
+func (f ExpenseForecast) ID() string             { return f.id }
+func (f ExpenseForecast) PartnerID() int         { return f.partnerID }
+func (f ExpenseForecast) Concept() string        { return f.concept }
 func (f ExpenseForecast) Description() string    { return f.description }
 func (f ExpenseForecast) GrossAmount() Money     { return f.grossAmount }
 func (f ExpenseForecast) ApprovedAmount() Money  { return f.approvedAmount }

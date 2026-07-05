@@ -131,6 +131,13 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	case "n":
 		return p, openModalCmd(p.newYearForm())
 	case "o":
+		w, ok := p.selectedWindow()
+		if !ok {
+			return p, nil
+		}
+		if w.State() == model.WindowClosed {
+			return p, p.confirmCmd("Reobrir l'any?", p.deps.Windows.Reopen)
+		}
 		return p, p.confirmCmd("Obrir l'any?", p.deps.Windows.Open)
 	case "c":
 		return p, p.confirmCmd("Tancar l'any?", func(ctx context.Context, year int) error {

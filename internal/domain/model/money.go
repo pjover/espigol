@@ -53,10 +53,10 @@ func (m Money) DividedBy(divisor int) Money {
 	return Money{amount: m.amount.DivRound(decimal.NewFromInt(int64(divisor)), 2)}
 }
 
-func (m Money) Negate() Money              { return Money{amount: normalize(m.amount.Neg())} }
-func (m Money) Cmp(other Money) int        { return m.amount.Cmp(other.amount) }
-func (m Money) IsZero() bool               { return m.amount.IsZero() }
-func (m Money) Decimal() decimal.Decimal   { return m.amount }
+func (m Money) Negate() Money            { return Money{amount: normalize(m.amount.Neg())} }
+func (m Money) Cmp(other Money) int      { return m.amount.Cmp(other.amount) }
+func (m Money) IsZero() bool             { return m.amount.IsZero() }
+func (m Money) Decimal() decimal.Decimal { return m.amount }
 
 // String returns the canonical fixed-scale form, e.g. "31900.00".
 func (m Money) String() string { return m.amount.StringFixed(2) }

@@ -55,9 +55,9 @@ func ParseExpenseCategory(s string) (ExpenseCategory, error) {
 type PartnerType string
 
 const (
-	Productor     PartnerType = "Productor"
-	Patrocinador  PartnerType = "Patrocinador"
-	Collaborador  PartnerType = "Col·laborador"
+	Productor    PartnerType = "Productor"
+	Patrocinador PartnerType = "Patrocinador"
+	Collaborador PartnerType = "Col·laborador"
 )
 
 func ParsePartnerType(s string) (PartnerType, error) {

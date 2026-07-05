@@ -6,16 +6,16 @@ import (
 )
 
 type Partner struct {
-	id           int
-	name         string
-	surname      string
-	vatCode      string
-	email        string
-	mobile       string
-	partnerType  PartnerType
-	riaNumber    int
-	addedOn      time.Time
-	boardMember  bool
+	id          int
+	name        string
+	surname     string
+	vatCode     string
+	email       string
+	mobile      string
+	partnerType PartnerType
+	riaNumber   int
+	addedOn     time.Time
+	boardMember bool
 }
 
 func NewPartner(id int, name, surname, vatCode, email, mobile string, pt PartnerType,
