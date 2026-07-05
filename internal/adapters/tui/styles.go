@@ -62,6 +62,35 @@ func stateStyle(state model.WindowState) lipgloss.Style {
 	}
 }
 
+// truncate shortens s to at most max runes, replacing the last rune with "…"
+// if trimmed. Safe on multi-byte Unicode.
+func truncate(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	if max <= 1 {
+		return string(runes[:max])
+	}
+	return string(runes[:max-1]) + "…"
+}
+
+// scrollOffset returns the top-of-viewport index that keeps selected roughly
+// centered and clamped so the viewport never extends past the list bounds.
+func scrollOffset(selected, count, height int) int {
+	if height <= 0 || count <= height {
+		return 0
+	}
+	off := selected - height/2
+	if off < 0 {
+		off = 0
+	}
+	if off+height > count {
+		off = count - height
+	}
+	return off
+}
+
 func stateBadge(state model.WindowState) string {
 	switch state {
 	case model.WindowDraft:

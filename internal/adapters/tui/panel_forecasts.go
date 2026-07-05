@@ -153,17 +153,36 @@ func (p forecastsPanel) forecastForm(existing *model.ExpenseForecast) tea.Model 
 	return newForecastFormModal(p.deps, p.year, existing, p.reloadCmd)
 }
 
+// forecastLine formats a single forecast row, truncating only the concept so
+// that ID, partner, scope, and amount are always fully visible.
+func forecastLine(f model.ExpenseForecast, available int) string {
+	prefix := fmt.Sprintf("%s  soci %d  %s  ", f.ID(), f.PartnerID(), f.Scope().Kind())
+	suffix := fmt.Sprintf("  %s €", f.GrossAmount())
+	conceptMax := available - 2 - len([]rune(prefix)) - len([]rune(suffix))
+	if conceptMax < 3 {
+		return truncate(prefix+f.Concept()+suffix, available)
+	}
+	return prefix + truncate(f.Concept(), conceptMax) + suffix
+}
+
 func (p forecastsPanel) View(width, height int) string {
 	if len(p.forecasts) == 0 {
 		return dimStyle.Render("(cap previsió)")
 	}
+	off := scrollOffset(p.selected, len(p.forecasts), height)
+	end := off + height
+	if end > len(p.forecasts) {
+		end = len(p.forecasts)
+	}
 	var b strings.Builder
-	for i, f := range p.forecasts {
-		line := fmt.Sprintf("%s  soci %d  %s  %s  %s €", f.ID(), f.PartnerID(), f.Scope().Kind(), f.Concept(), f.GrossAmount())
-		if i == p.selected {
-			line = focusedPanelStyle.Render("> " + line)
+	for i, f := range p.forecasts[off:end] {
+		idx := off + i
+		raw := forecastLine(f, width-2)
+		var line string
+		if idx == p.selected {
+			line = focusedPanelStyle.Render("> " + raw)
 		} else {
-			line = "  " + line
+			line = "  " + raw
 		}
 		b.WriteString(line)
 		b.WriteString("\n")

@@ -239,14 +239,20 @@ func (p yearsPanel) View(width, height int) string {
 	if len(p.windows) == 0 {
 		return dimStyle.Render("(cap any)")
 	}
+	off := scrollOffset(p.selected, len(p.windows), height)
+	end := off + height
+	if end > len(p.windows) {
+		end = len(p.windows)
+	}
 	var b strings.Builder
-	for i, w := range p.windows {
-		line := fmt.Sprintf("%d  %s", w.Year(), w.State())
-		styled := stateStyle(w.State()).Render(line)
-		if i == p.selected {
-			styled = focusedPanelStyle.Render("> ") + styled
+	for i, w := range p.windows[off:end] {
+		idx := off + i
+		raw := truncate(fmt.Sprintf("%d  %s", w.Year(), w.State()), width-2)
+		var styled string
+		if idx == p.selected {
+			styled = focusedPanelStyle.Render("> ") + stateStyle(w.State()).Render(raw)
 		} else {
-			styled = "  " + styled
+			styled = "  " + stateStyle(w.State()).Render(raw)
 		}
 		b.WriteString(styled)
 		b.WriteString("\n")

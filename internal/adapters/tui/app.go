@@ -241,7 +241,8 @@ func (m rootModel) renderSidebar() string {
 	b.WriteString("\n")
 
 	for i, p := range m.panels {
-		entry := fmt.Sprintf("[%d] %s", i+1, p.Title())
+		// "[N] " prefix is 4 chars; truncate title to fill sidebarInnerWidth exactly.
+		entry := fmt.Sprintf("[%d] %s", i+1, truncate(p.Title(), sidebarInnerWidth-4))
 		if i == m.focused {
 			entry = focusedPanelStyle.Render(entry)
 		} else {
@@ -268,15 +269,25 @@ func (m rootModel) renderCenter() string {
 	if centerInnerH < 3 {
 		centerInnerH = 3
 	}
-	listH := centerInnerH * 60 / 100
-
 	if len(m.panels) == 0 {
 		return centerStyle.Width(centerInnerW).Render(dimStyle.Render("(cap panell)"))
 	}
 
 	p := m.panels[m.focused]
-	list := p.View(centerInnerW, listH)
 	detail := p.Detail()
+
+	// Give the list the full height when there is no detail; otherwise leave
+	// room for blank-line + separator + detail (overhead = 2 + detailLines).
+	listH := centerInnerH
+	if detail != "" {
+		detailLines := strings.Count(detail, "\n") + 1
+		listH = centerInnerH - 2 - detailLines
+		if listH < 3 {
+			listH = 3
+		}
+	}
+
+	list := p.View(centerInnerW, listH)
 
 	var content string
 	if detail == "" {
