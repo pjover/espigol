@@ -77,6 +77,7 @@ const (
 	AuditForecastEdited   AuditKind = "FORECAST_EDITED"
 	AuditForecastDeleted  AuditKind = "FORECAST_DELETED"
 	AuditWindowOpened     AuditKind = "WINDOW_OPENED"
+	AuditWindowEdited     AuditKind = "WINDOW_EDITED"
 	AuditWindowClosed     AuditKind = "WINDOW_CLOSED"
 	AuditWindowAutoClosed AuditKind = "WINDOW_AUTO_CLOSED"
 	AuditReportGenerated  AuditKind = "REPORT_GENERATED"

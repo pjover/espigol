@@ -194,7 +194,7 @@ is not verbatim; a one-time transform (part of the Foundation phase) does:
 
 ### 5.1 Window state machine
 
-`DRAFT → OPEN → CLOSED`. Taxonomy and limits are editable in `DRAFT`, locked on `OPEN`.
+`DRAFT → OPEN → CLOSED`. Taxonomy is editable in `DRAFT`, locked on `OPEN`. Deadline and expense limits are editable in `DRAFT` and `OPEN`, locked on `CLOSED`.
 At most one `OPEN` window at a time; multiple `DRAFT`/`CLOSED` coexist. **Closing is
 manual** (done by the admin in the TUI). There is no auto-close scheduler in v1.
 

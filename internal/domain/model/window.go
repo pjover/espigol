@@ -37,3 +37,9 @@ func (w SubmissionWindow) InvestmentExpenseLimit() Money { return w.investmentEx
 func (w SubmissionWindow) WithState(s WindowState) SubmissionWindow  { w.state = s; return w }
 func (w SubmissionWindow) WithOpenedAt(t time.Time) SubmissionWindow { w.openedAt = &t; return w }
 func (w SubmissionWindow) WithClosedAt(t time.Time) SubmissionWindow { w.closedAt = &t; return w }
+func (w SubmissionWindow) WithDeadline(d time.Time) SubmissionWindow { w.deadline = d; return w }
+func (w SubmissionWindow) WithLimits(current, investment Money) SubmissionWindow {
+	w.currentExpenseLimit = current
+	w.investmentExpenseLimit = investment
+	return w
+}
