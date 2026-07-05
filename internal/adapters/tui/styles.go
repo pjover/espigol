@@ -6,19 +6,19 @@ import (
 )
 
 var (
-	colorFgMuted    = lipgloss.Color("#565f89")
-	colorFgEmphasis = lipgloss.Color("#e0e0e0")
+	colorFgMuted    = lipgloss.AdaptiveColor{Light: "#5c6370", Dark: "#565f89"}
+	colorFgEmphasis = lipgloss.AdaptiveColor{Light: "#1a1b26", Dark: "#e0e0e0"}
 
-	colorBgSelection = lipgloss.Color("#364a82")
+	colorBgSelection = lipgloss.AdaptiveColor{Light: "#dce0f5", Dark: "#364a82"}
 
-	colorAccent = lipgloss.Color("#7aa2f7")
+	colorAccent = lipgloss.AdaptiveColor{Light: "#2055c7", Dark: "#7aa2f7"}
 
-	colorError   = lipgloss.Color("#f7768e")
-	colorWarning = lipgloss.Color("#e0af68")
-	colorSuccess = lipgloss.Color("#9ece6a")
-	colorInfo    = lipgloss.Color("#7dcfff")
+	colorError   = lipgloss.AdaptiveColor{Light: "#c0392b", Dark: "#f7768e"}
+	colorWarning = lipgloss.AdaptiveColor{Light: "#a06800", Dark: "#e0af68"}
+	colorSuccess = lipgloss.AdaptiveColor{Light: "#2e7d32", Dark: "#9ece6a"}
+	colorInfo    = lipgloss.AdaptiveColor{Light: "#0277bd", Dark: "#7dcfff"}
 
-	colorDraftBg = lipgloss.Color("#3d3200")
+	colorDraftBg = lipgloss.AdaptiveColor{Light: "#fffde7", Dark: "#3d3200"}
 )
 
 var (
