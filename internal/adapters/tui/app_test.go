@@ -54,39 +54,29 @@ func TestRootModel_StartsFocusedOnFirstPanel(t *testing.T) {
 	}
 }
 
-func TestRootModel_TabAdvancesFocus(t *testing.T) {
+func TestRootModel_NumberKeySwitchesPanel(t *testing.T) {
 	m := newRootModel(Deps{}, stubPanels())
 
-	updated, _ := m.Update(keyMsg("tab"))
-	next := updated.(rootModel)
-	if got := next.FocusedTitle(); got != "Socis" {
-		t.Errorf("after tab, FocusedTitle() = %q, want %q", got, "Socis")
-	}
-
-	if !strings.Contains(next.View(), "Socis") {
-		t.Errorf("View() = %q, want it to contain the now-focused title", next.View())
-	}
-}
-
-func TestRootModel_TabWrapsAround(t *testing.T) {
-	m := newRootModel(Deps{}, stubPanels())
-
-	for i := 0; i < 3; i++ {
-		updated, _ := m.Update(keyMsg("tab"))
-		m = updated.(rootModel)
-	}
-	if got := m.FocusedTitle(); got != "Anys" {
-		t.Errorf("after 3 tabs (wrap), FocusedTitle() = %q, want %q", got, "Anys")
-	}
-}
-
-func TestRootModel_ShiftTabMovesBackward(t *testing.T) {
-	m := newRootModel(Deps{}, stubPanels())
-
-	updated, _ := m.Update(keyMsg("shift+tab"))
+	// stubPanels has 3 panels: Anys(0), Socis(1), Seccions(2).
+	// Press "2" → focus Socis.
+	updated, _ := m.Update(keyMsg("2"))
 	m = updated.(rootModel)
-	if got := m.FocusedTitle(); got != "Seccions" {
-		t.Errorf("after shift+tab from first panel (wrap back), FocusedTitle() = %q, want %q", got, "Seccions")
+	if got := m.FocusedTitle(); got != "Socis" {
+		t.Errorf("after '2', FocusedTitle() = %q, want %q", got, "Socis")
+	}
+
+	// Press "1" → back to Anys.
+	updated, _ = m.Update(keyMsg("1"))
+	m = updated.(rootModel)
+	if got := m.FocusedTitle(); got != "Anys" {
+		t.Errorf("after '1', FocusedTitle() = %q, want %q", got, "Anys")
+	}
+
+	// Press "6" → out of range (only 3 panels); focus stays on Anys.
+	updated, _ = m.Update(keyMsg("6"))
+	m = updated.(rootModel)
+	if got := m.FocusedTitle(); got != "Anys" {
+		t.Errorf("after out-of-range '6', FocusedTitle() = %q, want %q (unchanged)", got, "Anys")
 	}
 }
 
@@ -114,33 +104,10 @@ func TestRootModel_CtrlCReturnsQuitCmd(t *testing.T) {
 	}
 }
 
-func TestRootModel_QuestionMarkTogglesHelp(t *testing.T) {
-	m := newRootModel(Deps{}, stubPanels())
-	before := m.View()
-
-	updated, _ := m.Update(keyMsg("?"))
-	m = updated.(rootModel)
-	after := m.View()
-
-	if before == after {
-		t.Error("expected View() to change after toggling help with '?'")
-	}
-	if !strings.Contains(after, "panell anterior") {
-		t.Errorf("View() after '?' = %q, want it to contain the extended help line", after)
-	}
-
-	// Toggling again should restore the original (short) help line.
-	updated, _ = m.Update(keyMsg("?"))
-	m = updated.(rootModel)
-	if strings.Contains(m.View(), "panell anterior") {
-		t.Error("expected the extended help line to disappear after toggling '?' again")
-	}
-}
-
 func TestRootModel_ActionsAppearInHelpLine(t *testing.T) {
 	m := newRootModel(Deps{}, stubPanels())
-	if !strings.Contains(m.View(), "n: nou") {
-		t.Errorf("View() = %q, want it to contain the focused panel's action", m.View())
+	if !strings.Contains(m.View(), "[n] nou") {
+		t.Errorf("View() = %q, want it to contain the focused panel's action in [key] label format", m.View())
 	}
 }
 
