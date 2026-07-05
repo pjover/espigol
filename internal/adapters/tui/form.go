@@ -85,16 +85,7 @@ func (m formModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		if len(m.fields) == 0 {
-			return m, closeModalCmd
-		}
-		if m.focused == len(m.fields)-1 {
-			return m, tea.Batch(m.collectAndSubmit(), closeModalCmd)
-		}
-		m.blurCurrent()
-		m.focused = (m.focused + 1) % len(m.fields)
-		m.focusCurrent()
-		return m, nil
+		return m, tea.Batch(m.collectAndSubmit(), closeModalCmd)
 	case "alt+enter":
 		if len(m.fields) > 0 && m.fields[m.focused].multiline {
 			var cmd tea.Cmd
@@ -189,6 +180,6 @@ func (m formModal) View() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("[Enter] camp seguent  [Alt+Enter] nova línia  [Esc] cancel·la"))
+	b.WriteString(helpStyle.Render("[Tab] camp seguent  [Enter] desa  [Alt+Enter] nova línia  [Esc] cancel·la"))
 	return modalStyle.Render(b.String())
 }

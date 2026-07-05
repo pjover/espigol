@@ -358,16 +358,10 @@ func (m *forecastFormModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		// Selector fields and the last text field submit; all others advance focus.
-		if m.isSelector(forecastFormField(m.focused)) || m.focused == int(forecastFormFieldCount)-1 {
-			if cmd := m.submit(); cmd != nil {
-				return m, tea.Batch(cmd, closeModalCmd)
-			}
-			return m, nil
+		// Enter always submits from any field.
+		if cmd := m.submit(); cmd != nil {
+			return m, tea.Batch(cmd, closeModalCmd)
 		}
-		m.blurCurrent()
-		m.focused = (m.focused + 1) % int(forecastFormFieldCount)
-		m.focusCurrent()
 		return m, nil
 	case "alt+enter":
 		if forecastFormField(m.focused) == fieldDescription {
