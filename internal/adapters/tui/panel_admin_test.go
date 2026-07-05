@@ -294,6 +294,8 @@ func TestForecastsPanel_InvalidGrossKeepsFormOpenWithError(t *testing.T) {
 	form.concept.SetValue("Adobs")
 	form.gross.SetValue("not-a-number")
 	form.plannedDate.SetValue("2026-04-15")
+	// Move to the last field so Enter triggers submit (and validation).
+	form.focused = int(fieldPlannedDate)
 
 	var tm tea.Model = form
 	updated, submitCmd := tm.Update(pKey("enter"))
@@ -331,6 +333,8 @@ func TestForecastsPanel_CreateViaFormCallsAdminCreate(t *testing.T) {
 	form.description.SetValue("Adobs de primavera")
 	form.gross.SetValue("250.00")
 	form.plannedDate.SetValue("2026-04-15")
+	// Move to the last field so Enter triggers submit.
+	form.focused = int(fieldPlannedDate)
 
 	var tm tea.Model = form
 	_, submitCmd := tm.Update(pKey("enter"))

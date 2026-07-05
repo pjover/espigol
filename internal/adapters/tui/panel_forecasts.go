@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/pjover/espigol/internal/application"
 	"github.com/pjover/espigol/internal/domain/model"
@@ -223,7 +223,7 @@ type forecastFormModal struct {
 
 	// Text fields.
 	concept     textinput.Model
-	description textinput.Model
+	description textarea.Model
 	gross       textinput.Model
 	plannedDate textinput.Model
 
@@ -268,11 +268,15 @@ func newForecastFormModal(deps Deps, year int, existing *model.ExpenseForecast, 
 	scopes := []model.ScopeKind{model.ScopePartner, model.ScopeCommon, model.ScopeSection}
 
 	title := "Nova previsió"
-	concept, description, gross, plannedDate := textinput.New(), textinput.New(), textinput.New(), textinput.New()
+	concept, gross, plannedDate := textinput.New(), textinput.New(), textinput.New()
 	concept.Placeholder = "Concepte"
-	description.Placeholder = "Descripció"
 	gross.Placeholder = "100.00"
 	plannedDate.Placeholder = "2026-03-01"
+
+	description := textarea.New()
+	description.Placeholder = "Descripció"
+	description.ShowLineNumbers = false
+	description.CharLimit = 0
 
 	partnerIdx, scopeIdx, sectionIdx, subtypeIdx := 0, 0, 0, 0
 
@@ -354,10 +358,22 @@ func (m *forecastFormModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		// On a validation error submit() returns nil and sets errMsg; keep the
-		// modal open so the admin can correct the input.
-		if cmd := m.submit(); cmd != nil {
-			return m, tea.Batch(cmd, closeModalCmd)
+		// Selector fields and the last text field submit; all others advance focus.
+		if m.isSelector(forecastFormField(m.focused)) || m.focused == int(forecastFormFieldCount)-1 {
+			if cmd := m.submit(); cmd != nil {
+				return m, tea.Batch(cmd, closeModalCmd)
+			}
+			return m, nil
+		}
+		m.blurCurrent()
+		m.focused = (m.focused + 1) % int(forecastFormFieldCount)
+		m.focusCurrent()
+		return m, nil
+	case "alt+enter":
+		if forecastFormField(m.focused) == fieldDescription {
+			var cmd tea.Cmd
+			m.description, cmd = m.description.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			return m, cmd
 		}
 		return m, nil
 	case "tab", "down":
@@ -443,7 +459,7 @@ func (m *forecastFormModal) focusCurrent() {
 	case fieldConcept:
 		m.concept.Focus()
 	case fieldDescription:
-		m.description.Focus()
+		_ = m.description.Focus()
 	case fieldGross:
 		m.gross.Focus()
 	case fieldPlannedDate:
@@ -524,7 +540,13 @@ func (m *forecastFormModal) View() string {
 	}
 	b.WriteString(m.selectorLine("Subtipus", fieldSubtype, m.subtypeLabel()))
 	b.WriteString(m.textLine("Concepte", fieldConcept, m.concept))
-	b.WriteString(m.textLine("Descripció", fieldDescription, m.description))
+
+	descLabel := dimStyle.Render("Descripció")
+	if forecastFormField(m.focused) == fieldDescription {
+		descLabel = focusedPanelStyle.Render("Descripció")
+	}
+	b.WriteString(fmt.Sprintf("%s:\n%s\n", descLabel, m.description.View()))
+
 	b.WriteString(m.textLine("Import brut", fieldGross, m.gross))
 	b.WriteString(m.textLine("Data prevista", fieldPlannedDate, m.plannedDate))
 
@@ -537,10 +559,7 @@ func (m *forecastFormModal) View() string {
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("tab/shift+tab: mou camp · left/right: canvia selector · enter: desa · esc: cancel·la"))
 
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return box.Render(b.String())
+	return modalStyle.Render(b.String())
 }
 
 func (m *forecastFormModal) partnerLabel() string {
