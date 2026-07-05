@@ -560,21 +560,23 @@ func TestSectionsPanel_EOpensFormAndUpdatesSection(t *testing.T) {
 	}
 }
 
-// submitForm sets each field's value (in declaration order, matching the
-// values map by label) then sends "enter" to submit, returning the
-// resulting batched tea.Msg.
+// submitForm sets each field's value then submits from the last field.
 func submitForm(t *testing.T, form formModal, values map[string]string) tea.Msg {
 	t.Helper()
-	var model tea.Model = form
 	for i, f := range form.fields {
 		val, ok := values[f.label]
 		if !ok {
 			continue
 		}
-		fm := model.(formModal)
-		fm.fields[i].input.SetValue(val)
-		model = fm
+		if f.multiline {
+			form.fields[i].multi.SetValue(val)
+		} else {
+			form.fields[i].single.SetValue(val)
+		}
 	}
+	// Enter on the last field submits.
+	form.focused = len(form.fields) - 1
+	var model tea.Model = form
 	_, cmd := model.Update(pKey("enter"))
 	if cmd == nil {
 		t.Fatal("expected a non-nil cmd from submitting the form")
