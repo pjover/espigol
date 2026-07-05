@@ -250,7 +250,11 @@ func (m rootModel) renderSidebar() string {
 		b.WriteString(entry + "\n")
 	}
 
-	return sidebarStyle.Render(b.String())
+	innerH := m.height - 1 - 2 // footer(1) + top/bottom border(2)
+	if innerH < 3 {
+		innerH = 3
+	}
+	return sidebarStyle.Height(innerH).Render(b.String())
 }
 
 // renderCenter renders the focused panel's content in the center pane.
@@ -282,7 +286,7 @@ func (m rootModel) renderCenter() string {
 		content = list + "\n" + sep + "\n" + detail
 	}
 
-	return centerStyle.Width(centerInnerW).Render(content)
+	return centerStyle.Width(centerInnerW).Height(centerInnerH).Render(content)
 }
 
 // renderFooter builds the bottom keybinding line from the focused
