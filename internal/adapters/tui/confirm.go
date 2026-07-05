@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // confirmModal is a yes/no modal. Pressing "y" runs onConfirm (if set) and
@@ -46,9 +45,5 @@ func (m confirmModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (m confirmModal) View() string {
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2).
-		Foreground(colorWhite)
-	return box.Render(fmt.Sprintf("%s\n\n[y] sí    [n] no", m.message))
+	return modalStyle.Render(fmt.Sprintf("%s\n\n[y] sí    [n] no", m.message))
 }
