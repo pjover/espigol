@@ -91,9 +91,9 @@ type rootModel struct {
 // via a yearSelectedMsg as they implement that behaviour.
 func newRootModel(deps Deps, panels []Panel) rootModel {
 	return rootModel{
-		deps:    deps,
-		panels:  panels,
-		year:    time.Now().Year(),
+		deps:   deps,
+		panels: panels,
+		year:   time.Now().Year(),
 	}
 }
 
