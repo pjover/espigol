@@ -95,7 +95,7 @@ func (p yearsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 			p.selected = max(0, len(p.windows)-1)
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 
@@ -117,7 +117,7 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 			p.selected--
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 	case "down", "j":
@@ -125,7 +125,7 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 			p.selected++
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 	case "n":

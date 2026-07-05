@@ -1,13 +1,15 @@
 package tui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/pjover/espigol/internal/domain/model"
 )
 
 // panelInitMsg is sent once to every panel from rootModel.Init, giving each
@@ -50,34 +52,34 @@ func openModalCmd(modal tea.Model) tea.Cmd {
 // Informes, Tipus i subtipus — Task 12) can react and reload for the new
 // year.
 type yearSelectedMsg struct {
-	Year int
+	Year  int
+	State model.WindowState
 }
 
 // yearSelectedCmd is the tea.Cmd a panel returns to change the root year
 // context.
-func yearSelectedCmd(year int) tea.Cmd {
-	return func() tea.Msg { return yearSelectedMsg{Year: year} }
+func yearSelectedCmd(year int, state model.WindowState) tea.Cmd {
+	return func() tea.Msg { return yearSelectedMsg{Year: year, State: state} }
 }
 
 // rootModel is the Bubble Tea root model. It owns global navigation (panel
-// focus, help overlay, modal overlay, window size, year context) and
-// delegates everything else to the focused Panel.
+// focus, modal overlay, window size, year context) and delegates everything
+// else to the focused Panel.
 //
 // Panel extension point: panels are injected via NewApp's panels argument
 // (see NewApp below) rather than constructed here. Tasks 11/12 add their
 // panels by building a []Panel (e.g. []Panel{NewYearsPanel(deps),
 // NewPartnersPanel(deps), NewSectionsPanel(deps), ...}) and passing it to
-// NewApp. The order of the slice is the left-to-right/tab order and the
-// order panels are listed in the left column.
+// NewApp. The order of the slice is the [1-6] key order and the order
+// panels are listed in the sidebar.
 type rootModel struct {
-	deps    Deps
-	panels  []Panel
-	focused int
-	year    int
+	deps      Deps
+	panels    []Panel
+	focused   int
+	year      int
+	yearState model.WindowState
 
-	help     help.Model
-	showHelp bool
-	modal    tea.Model
+	modal tea.Model
 
 	width  int
 	height int
@@ -89,10 +91,9 @@ type rootModel struct {
 // via a yearSelectedMsg as they implement that behaviour.
 func newRootModel(deps Deps, panels []Panel) rootModel {
 	return rootModel{
-		deps:   deps,
-		panels: panels,
-		help:   help.New(),
-		year:   time.Now().Year(),
+		deps:    deps,
+		panels:  panels,
+		year:    time.Now().Year(),
 	}
 }
 
@@ -126,7 +127,6 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.help.Width = msg.Width
 		return m, nil
 
 	case openModalMsg:
@@ -143,6 +143,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case yearSelectedMsg:
 		m.year = msg.Year
+		m.yearState = msg.State
 		cmds := make([]tea.Cmd, 0, len(m.panels))
 		for i, p := range m.panels {
 			updated, cmd := p.Update(msg)
@@ -165,14 +166,11 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "?":
-			m.showHelp = !m.showHelp
-			return m, nil
-		case "tab", "right":
-			m.focused = m.nextFocus(1)
-			return m, nil
-		case "shift+tab", "left":
-			m.focused = m.nextFocus(-1)
+		case "1", "2", "3", "4", "5", "6":
+			idx := int(keyMsg.String()[0] - '1')
+			if idx >= 0 && idx < len(m.panels) {
+				m.focused = idx
+			}
 			return m, nil
 		}
 	}
@@ -201,89 +199,103 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// nextFocus computes the next focused panel index, wrapping around, moving
-// by delta (typically +1 or -1).
-func (m rootModel) nextFocus(delta int) int {
-	n := len(m.panels)
-	if n == 0 {
-		return 0
-	}
-	return ((m.focused+delta)%n + n) % n
-}
-
 // View implements tea.Model.
 func (m rootModel) View() string {
+	if m.width > 0 && m.height > 0 && (m.width < 80 || m.height < 24) {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
+			redStyle.Render("Terminal massa petit (mínim 80×24)"))
+	}
+
+	sidebar := m.renderSidebar()
+	center := m.renderCenter()
+	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, " ", center)
+	view := body + "\n" + m.renderFooter()
+
+	if m.modal != nil {
+		view = lipgloss.Place(m.width, m.height,
+			lipgloss.Center, lipgloss.Center, m.modal.View())
+	}
+	return view
+}
+
+// sidebarOuterWidth is the total rendered width of the sidebar including border+padding.
+// sidebarInnerWidth (20) + 2 (Padding(0,1)) + 2 (RoundedBorder left+right) = 24.
+const sidebarOuterWidth = 24
+
+// renderSidebar renders the left panel showing business name, year context,
+// state badge, and the numbered panel list.
+func (m rootModel) renderSidebar() string {
 	var b strings.Builder
 
 	businessName := ""
 	if m.deps.Cfg != nil {
 		businessName = m.deps.Cfg.BusinessName
 	}
-	topBar := titleStyle.Render(businessName) + "   " + dimStyle.Render("Any: ") + titleStyle.Render(strconv.Itoa(m.year))
-	b.WriteString(topBar)
+	b.WriteString(titleStyle.Render(businessName))
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("Any: ") + titleStyle.Render(strconv.Itoa(m.year)))
+	b.WriteString("\n")
+	b.WriteString(stateBadge(m.yearState))
 	b.WriteString("\n\n")
+	b.WriteString(dimStyle.Render(strings.Repeat("─", sidebarInnerWidth)))
+	b.WriteString("\n")
 
-	left := m.renderPanelList()
-	main := m.renderMain()
-
-	body := lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", main)
-	b.WriteString(body)
-	b.WriteString("\n\n")
-
-	b.WriteString(m.renderHelpLine())
-
-	view := b.String()
-	if m.modal != nil {
-		view = view + "\n\n" + m.modal.View()
-	}
-	return view
-}
-
-// renderPanelList renders the left-hand column of panel titles, the
-// focused one highlighted.
-func (m rootModel) renderPanelList() string {
-	var lines []string
 	for i, p := range m.panels {
-		title := p.Title()
+		entry := fmt.Sprintf("[%d] %s", i+1, p.Title())
 		if i == m.focused {
-			title = focusedPanelStyle.Render("> " + title)
+			entry = focusedPanelStyle.Render(entry)
 		} else {
-			title = dimStyle.Render("  " + title)
+			entry = dimStyle.Render(entry)
 		}
-		lines = append(lines, title)
+		b.WriteString(entry + "\n")
 	}
-	return strings.Join(lines, "\n")
+
+	return sidebarStyle.Render(b.String())
 }
 
-// renderMain renders the focused panel's main content and detail.
-func (m rootModel) renderMain() string {
+// renderCenter renders the focused panel's content in the center pane.
+func (m rootModel) renderCenter() string {
+	// centerInnerW = total width - sidebar outer - gap(1) - center border+padding(4)
+	centerInnerW := m.width - sidebarOuterWidth - 1 - 4
+	if centerInnerW < 10 {
+		centerInnerW = 10
+	}
+	centerInnerH := m.height - 1 - 2 // reserve footer(1) + center top+bottom border(2)
+	if centerInnerH < 3 {
+		centerInnerH = 3
+	}
+	listH := centerInnerH * 60 / 100
+
 	if len(m.panels) == 0 {
-		return dimStyle.Render("(cap panell)")
+		return centerStyle.Width(centerInnerW).Render(dimStyle.Render("(cap panell)"))
 	}
+
 	p := m.panels[m.focused]
-	main := p.View(m.width, m.height)
+	list := p.View(centerInnerW, listH)
 	detail := p.Detail()
+
+	var content string
 	if detail == "" {
-		return main
+		content = list
+	} else {
+		sep := dimStyle.Render(strings.Repeat("─", centerInnerW))
+		content = list + "\n" + sep + "\n" + detail
 	}
-	return main + "\n\n" + detail
+
+	return centerStyle.Width(centerInnerW).Render(content)
 }
 
-// renderHelpLine builds the bottom keybinding line from the focused
+// renderFooter builds the bottom keybinding line from the focused
 // panel's Actions() plus the global keys.
-func (m rootModel) renderHelpLine() string {
+func (m rootModel) renderFooter() string {
 	var parts []string
 	if len(m.panels) > 0 {
 		for _, a := range m.panels[m.focused].Actions() {
-			parts = append(parts, a.Key+": "+a.Label)
+			parts = append(parts, "["+a.Key+"] "+a.Label)
 		}
 	}
-	parts = append(parts, "tab: panell seguent", "?: ajuda", "q: surt")
-	line := strings.Join(parts, "  ·  ")
-	if m.showHelp {
-		line = line + "\n" + helpStyle.Render("shift+tab/left: panell anterior  ·  ctrl+c: surt")
-	}
-	return helpStyle.Render(line)
+	parts = append(parts, "[↑↓] navegar", "[1-6] panell", "[q] surt")
+	return helpStyle.Render(strings.Join(parts, "  "))
 }
 
 // App is the TUI adapter's entry point: it wraps the root Bubble Tea model
