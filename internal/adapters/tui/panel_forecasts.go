@@ -231,7 +231,7 @@ func (p forecastsPanel) Detail() string {
 		scope += ":" + f.Scope().SectionCode()
 	}
 	detail := fmt.Sprintf("%s  ·  soci %d  ·  %s  ·  %s  ·  Subtipus: %s  ·  Import: %s €  ·  Data prevista: %s",
-		f.ID(), f.Partner().ID(), scope, f.Concept(), f.SubtypeCode(), f.GrossAmount(), f.PlannedDate().Format("2006-01-02"))
+		f.ID(), f.Partner().ID(), scope, f.Concept(), f.SubtypeCode(), formatMoney(f.GrossAmount()), f.PlannedDate().Format("2006-01-02"))
 	if errLine := errDetail(p.err); errLine != "" {
 		detail += "\n" + errLine
 	}
