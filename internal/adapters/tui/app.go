@@ -293,7 +293,7 @@ func (m rootModel) renderCenter() string {
 	if detail == "" {
 		content = list
 	} else {
-		sep := dimStyle.Render(strings.Repeat("─", centerInnerW))
+		sep := dimStyle.Render(strings.Repeat("─", centerInnerW-2))
 		content = list + "\n" + sep + "\n" + detail
 	}
 
