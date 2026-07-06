@@ -50,7 +50,7 @@ func (s *PartnerService) Create(ctx context.Context, in PartnerInput) (model.Par
 			return err
 		}
 		created = p
-		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerSaved, "Partner", itoa(in.ID), now)
+		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerCreated, "Partner", itoa(in.ID), now)
 	})
 	return created, err
 }
@@ -81,7 +81,7 @@ func (s *PartnerService) Update(ctx context.Context, id int, in PartnerInput) er
 		if err := r.Partners.Save(ctx, p); err != nil {
 			return err
 		}
-		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerSaved, "Partner", itoa(id), now)
+		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerEdited, "Partner", itoa(id), now)
 	})
 }
 
@@ -98,7 +98,7 @@ func (s *PartnerService) SetBoardMember(ctx context.Context, id int, board bool)
 		if err := r.Partners.Save(ctx, existing.WithBoardMember(board)); err != nil {
 			return err
 		}
-		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerSaved, "Partner", itoa(id), now)
+		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerEdited, "Partner", itoa(id), now)
 	})
 }
 
@@ -133,7 +133,7 @@ func (s *PartnerService) SetSectionMemberships(ctx context.Context, partnerID in
 				return err
 			}
 		}
-		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerSaved, "Partner", itoa(partnerID), now)
+		return adminAudit(ctx, r, s.adminEmail, model.AuditPartnerEdited, "Partner", itoa(partnerID), now)
 	})
 }
 

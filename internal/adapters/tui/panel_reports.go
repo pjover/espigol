@@ -21,7 +21,8 @@ type reportsPanel struct {
 	year  int
 	state model.WindowState
 
-	years []int // years with a stored report, ascending
+	years    []int // years with a stored report, ascending
+	yearsErr error // error from loading the years-with-reports list
 
 	lastResult *reportDoneMsg
 }
@@ -95,7 +96,10 @@ func (p reportsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		return p, p.loadYearsCmd()
 
 	case reportYearsLoadedMsg:
-		if msg.err == nil {
+		if msg.err != nil {
+			p.yearsErr = msg.err
+		} else {
+			p.yearsErr = nil
 			p.years = msg.years
 		}
 		return p, nil
@@ -151,6 +155,9 @@ func (p reportsPanel) View(width, height int) string {
 }
 
 func (p reportsPanel) Detail() string {
+	if p.yearsErr != nil {
+		return errDetail(p.yearsErr)
+	}
 	if p.lastResult == nil {
 		return dimStyle.Render("Prem 'r' per generar l'informe de l'any seleccionat.")
 	}

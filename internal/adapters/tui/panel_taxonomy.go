@@ -316,26 +316,40 @@ func (p taxonomyPanel) View(width, height int) string {
 	if len(p.items) == 0 {
 		return dimStyle.Render("(cap tipus ni subtipus)")
 	}
+	// Reserve 2 rows at the bottom for the non-draft note when needed.
+	listH := height
+	if !p.isDraft() && height > 2 {
+		listH = height - 2
+	}
+	off := scrollOffset(p.selected, len(p.items), listH)
+	end := off + listH
+	if end > len(p.items) {
+		end = len(p.items)
+	}
 	var b strings.Builder
-	for i, item := range p.items {
-		var line string
+	for i, item := range p.items[off:end] {
+		idx := off + i
+		var raw string
 		if item.isType {
-			line = fmt.Sprintf("%s  %s  (%s)", item.typ.Code(), item.typ.Label(), item.typ.Category())
+			raw = truncate(fmt.Sprintf("%s  %s  (%s)", item.typ.Code(), item.typ.Label(), item.typ.Category()), width-4)
 		} else {
-			line = fmt.Sprintf("  %s  %s", item.subtype.Code(), item.subtype.Label())
-			line = dimStyle.Render(line)
+			raw = truncate(fmt.Sprintf("  %s  %s", item.subtype.Code(), item.subtype.Label()), width-4)
 		}
-		if i == p.selected {
-			line = focusedPanelStyle.Render("> " + line)
-		} else {
-			line = "  " + line
+		var line string
+		switch {
+		case idx == p.selected:
+			line = focusedPanelStyle.Render("> " + raw)
+		case !item.isType:
+			line = "  " + dimStyle.Render(raw)
+		default:
+			line = "  " + raw
 		}
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
 	if !p.isDraft() {
 		b.WriteString("\n")
-		b.WriteString(dimStyle.Render("Tipus i subtipus només editable en esborrany (DRAFT)."))
+		b.WriteString(dimStyle.Render(truncate("Tipus i subtipus només editable en esborrany (DRAFT).", width)))
 	}
 	return b.String()
 }

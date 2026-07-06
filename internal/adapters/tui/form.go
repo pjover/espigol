@@ -3,24 +3,37 @@ package tui
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
-// formField is a single labelled input in a formModal.
-type formField struct {
-	label string
-	input textinput.Model
+// formFieldDef describes a field to create via newFormModal.
+type formFieldDef struct {
+	Label       string
+	Placeholder string
+	Value       string
+	Multiline   bool // if true, renders as textarea; Alt+Enter inserts newline
 }
 
-// formModal is a generic, ordered list of labelled text fields. Panels
-// (Task 11/12) build one with newFormModal to collect free-text input (a
-// name, an email, an amount as a string, etc.) before calling the relevant
-// application service. "Selector" fields (e.g. picking a partner or a
-// subtype from a list) are out of scope for this generic modal; panels that
-// need them can layer their own tea.Model and still honour the same
-// modalClosedMsg/onSubmit convention.
+// formField holds one labelled input — either single-line (textinput) or
+// multi-line (textarea). Exactly one of single/multi is active, selected by
+// the multiline flag.
+type formField struct {
+	label     string
+	multiline bool
+	single    textinput.Model
+	multi     textarea.Model
+}
+
+func (f formField) value() string {
+	if f.multiline {
+		return f.multi.Value()
+	}
+	return f.single.Value()
+}
+
+// formModal is a generic ordered list of labelled input fields.
 type formModal struct {
 	title    string
 	fields   []formField
@@ -28,28 +41,30 @@ type formModal struct {
 	onSubmit func(values map[string]string) tea.Cmd
 }
 
-// newFormModal builds a form modal with the given title and ordered
-// (label, initial value) field pairs. onSubmit receives the field values
-// keyed by label when the user presses enter.
 func newFormModal(title string, fieldDefs []formFieldDef, onSubmit func(values map[string]string) tea.Cmd) formModal {
 	fields := make([]formField, len(fieldDefs))
 	for i, def := range fieldDefs {
-		ti := textinput.New()
-		ti.Placeholder = def.Placeholder
-		ti.SetValue(def.Value)
-		if i == 0 {
-			ti.Focus()
+		if def.Multiline {
+			ta := textarea.New()
+			ta.Placeholder = def.Placeholder
+			ta.SetValue(def.Value)
+			ta.ShowLineNumbers = false
+			ta.CharLimit = 0
+			if i == 0 {
+				ta.Focus()
+			}
+			fields[i] = formField{label: def.Label, multiline: true, multi: ta}
+		} else {
+			ti := textinput.New()
+			ti.Placeholder = def.Placeholder
+			ti.SetValue(def.Value)
+			if i == 0 {
+				ti.Focus()
+			}
+			fields[i] = formField{label: def.Label, single: ti}
 		}
-		fields[i] = formField{label: def.Label, input: ti}
 	}
 	return formModal{title: title, fields: fields, onSubmit: onSubmit}
-}
-
-// formFieldDef describes a field to create via newFormModal.
-type formFieldDef struct {
-	Label       string
-	Placeholder string
-	Value       string
 }
 
 // Init implements tea.Model.
@@ -61,7 +76,7 @@ func (m formModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		var cmd tea.Cmd
 		if len(m.fields) > 0 {
-			m.fields[m.focused].input, cmd = m.fields[m.focused].input.Update(msg)
+			cmd = m.updateActive(msg)
 		}
 		return m, cmd
 	}
@@ -70,15 +85,15 @@ func (m formModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		values := make(map[string]string, len(m.fields))
-		for _, f := range m.fields {
-			values[f.label] = f.input.Value()
+		return m, tea.Batch(m.collectAndSubmit(), closeModalCmd)
+	case "alt+enter":
+		if len(m.fields) > 0 && m.fields[m.focused].multiline {
+			var cmd tea.Cmd
+			m.fields[m.focused].multi, cmd = m.fields[m.focused].multi.Update(
+				tea.KeyMsg{Type: tea.KeyEnter})
+			return m, cmd
 		}
-		var submitCmd tea.Cmd
-		if m.onSubmit != nil {
-			submitCmd = m.onSubmit(values)
-		}
-		return m, tea.Batch(submitCmd, closeModalCmd)
+		return m, nil
 	case "tab", "down":
 		m.blurCurrent()
 		m.focused = (m.focused + 1) % max(len(m.fields), 1)
@@ -93,20 +108,54 @@ func (m formModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	if len(m.fields) > 0 {
-		m.fields[m.focused].input, cmd = m.fields[m.focused].input.Update(msg)
+		cmd = m.updateActive(msg)
 	}
 	return m, cmd
 }
 
+func (m *formModal) collectAndSubmit() tea.Cmd {
+	values := make(map[string]string, len(m.fields))
+	for _, f := range m.fields {
+		values[f.label] = f.value()
+	}
+	if m.onSubmit != nil {
+		return m.onSubmit(values)
+	}
+	return nil
+}
+
+func (m *formModal) updateActive(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
+	f := &m.fields[m.focused]
+	if f.multiline {
+		f.multi, cmd = f.multi.Update(msg)
+	} else {
+		f.single, cmd = f.single.Update(msg)
+	}
+	return cmd
+}
+
 func (m *formModal) blurCurrent() {
-	if m.focused >= 0 && m.focused < len(m.fields) {
-		m.fields[m.focused].input.Blur()
+	if m.focused < 0 || m.focused >= len(m.fields) {
+		return
+	}
+	f := &m.fields[m.focused]
+	if f.multiline {
+		f.multi.Blur()
+	} else {
+		f.single.Blur()
 	}
 }
 
 func (m *formModal) focusCurrent() {
-	if m.focused >= 0 && m.focused < len(m.fields) {
-		m.fields[m.focused].input.Focus()
+	if m.focused < 0 || m.focused >= len(m.fields) {
+		return
+	}
+	f := &m.fields[m.focused]
+	if f.multiline {
+		f.multi.Focus()
+	} else {
+		f.single.Focus()
 	}
 }
 
@@ -122,16 +171,15 @@ func (m formModal) View() string {
 		} else {
 			label = dimStyle.Render(label)
 		}
-		b.WriteString(label)
-		b.WriteString(": ")
-		b.WriteString(f.input.View())
+		b.WriteString(label + ": ")
+		if f.multiline {
+			b.WriteString(f.multi.View())
+		} else {
+			b.WriteString(f.single.View())
+		}
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("tab/shift+tab: mou camp · enter: desa · esc: cancel·la"))
-
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return box.Render(b.String())
+	b.WriteString(helpStyle.Render("[Tab] camp seguent  [Enter] desa  [Alt+Enter] nova línia  [Esc] cancel·la"))
+	return modalStyle.Render(b.String())
 }

@@ -80,7 +80,7 @@ func seedForecastUsingSubtype(t *testing.T, conn *sql.DB, year int, subtypeCode 
 
 	scope := model.NewCommonScope()
 	gross := model.MoneyOf(100)
-	f, err := model.NewUnsavedExpenseForecast(1, "Concept", "", gross, model.ZeroMoney(), nil,
+	f, err := model.NewUnsavedExpenseForecast(soci, "Concept", "", gross, model.ZeroMoney(), nil,
 		time.Date(year, 6, 15, 0, 0, 0, 0, time.UTC), year, subtypeCode, scope, txNow(), true)
 	if err != nil {
 		t.Fatal(err)

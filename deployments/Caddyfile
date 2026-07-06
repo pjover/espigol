@@ -1,0 +1,5 @@
+# Replace espigol.example.org with the real domain before deploying.
+# Caddy auto-provisions and renews a Let's Encrypt TLS certificate for it.
+espigol.example.org {
+	reverse_proxy localhost:8080
+}

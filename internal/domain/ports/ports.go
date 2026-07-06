@@ -75,5 +75,6 @@ type AuditLog interface {
 type BoardAuthorizationRepository interface {
 	Save(ctx context.Context, a model.BoardAuthorization) error
 	ListByPartner(ctx context.Context, partnerID int) ([]model.BoardAuthorization, error)
-	Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) error
+	// Remove deletes the matching authorization, returning the rows removed (0 if none).
+	Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) (int64, error)
 }

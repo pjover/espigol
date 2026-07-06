@@ -43,10 +43,10 @@ func seedOpenYearWithForecasts(t *testing.T, conn *sql.DB) {
 	_ = sr.Save(ctx, oliva)
 
 	planned := time.Date(2027, 6, 1, 0, 0, 0, 0, time.UTC)
-	common, _ := model.NewUnsavedExpenseForecast(1, "Comú", "", model.MoneyOf(100), model.ZeroMoney(), nil, planned, 2027, "a1", model.NewCommonScope(), planned, true)
-	soci, _ := model.NewUnsavedExpenseForecast(1, "Soci", "", model.MoneyOf(500), model.ZeroMoney(), nil, planned, 2027, "b1", model.NewPartnerScope(), planned, true)
+	common, _ := model.NewUnsavedExpenseForecast(p, "Comú", "", model.MoneyOf(100), model.ZeroMoney(), nil, planned, 2027, "a1", model.NewCommonScope(), planned, true)
+	soci, _ := model.NewUnsavedExpenseForecast(p, "Soci", "", model.MoneyOf(500), model.ZeroMoney(), nil, planned, 2027, "b1", model.NewPartnerScope(), planned, true)
 	secScope, _ := model.NewSectionScope("oliva")
-	sec, _ := model.NewUnsavedExpenseForecast(1, "Secció oliva", "", model.MoneyOf(50), model.ZeroMoney(), nil, planned, 2027, "b1", secScope, planned, true)
+	sec, _ := model.NewUnsavedExpenseForecast(p, "Secció oliva", "", model.MoneyOf(50), model.ZeroMoney(), nil, planned, 2027, "b1", secScope, planned, true)
 	if _, err := fr.Create(ctx, common); err != nil {
 		t.Fatal(err)
 	}

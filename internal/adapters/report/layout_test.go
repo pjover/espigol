@@ -14,15 +14,27 @@ import (
 // scenario (same numbers as the Phase-3 golden test, anonymized text).
 func buildGolden(t *testing.T) report.ReportData {
 	t.Helper()
-	d := func(s string) model.Money { m, err := model.MoneyFromString(s); if err != nil { t.Fatal(err) }; return m }
+	d := func(s string) model.Money {
+		m, err := model.MoneyFromString(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
 	com := model.NewCommonScope()
 	par := model.NewPartnerScope()
 	oliva, _ := model.NewSectionScope("oliva")
 	ram, _ := model.NewSectionScope("ramaderia")
 	mk := func(id string, pid int, gross string, scope model.ExpenseScope, sub string) model.ExpenseForecast {
 		planned := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
-		f, err := model.NewExpenseForecast(id, pid, "Concepte "+id, "", d(gross), model.ZeroMoney(), nil, planned, 2026, sub, scope, planned, true)
-		if err != nil { t.Fatal(err) }
+		p, err := model.NewPartner(pid, "Soci", "", "", "soci@e.test", "", model.Productor, 0, planned, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := model.NewExpenseForecast(id, p, "Concepte "+id, "", d(gross), model.ZeroMoney(), nil, planned, 2026, sub, scope, planned, true)
+		if err != nil {
+			t.Fatal(err)
+		}
 		return f
 	}
 	forecasts := []model.ExpenseForecast{
@@ -46,18 +58,22 @@ func buildGolden(t *testing.T) report.ReportData {
 	var partners []model.Partner
 	for _, id := range []int{1, 2, 4, 5, 6, 7, 8, 11} {
 		p, err := model.NewPartner(id, "Soci", "", "", "s@e.test", "", model.Productor, 0, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		partners = append(partners, p)
 	}
 	sOliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
 	sRam, _ := model.NewSection("ramaderia", "Secció de ramaderia", true, 2)
 	rd, err := services.Compute(services.AllocationInput{
 		Year: 2026, Forecasts: forecasts, Partners: partners,
-		Sections: []model.Section{sOliva, sRam},
+		Sections:        []model.Section{sOliva, sRam},
 		SubtypeCategory: map[string]model.ExpenseCategory{"a1": model.CategoryCurrent, "b1": model.CategoryInvestment},
-		CurrentLimit: model.MoneyOf(30000), InvestmentLimit: model.MoneyOf(70000),
+		CurrentLimit:    model.MoneyOf(30000), InvestmentLimit: model.MoneyOf(70000),
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	return rd
 }
 

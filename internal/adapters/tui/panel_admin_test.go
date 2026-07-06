@@ -279,6 +279,36 @@ func TestForecastsPanel_ListsForecastsForYear(t *testing.T) {
 	}
 }
 
+func TestForecastsPanel_InvalidGrossKeepsFormOpenWithError(t *testing.T) {
+	deps, q := testDeps(t)
+	seedDraftTaxonomyYear(t, q, 2026)
+	seedForecastPartner(t, deps, 1)
+
+	p := NewForecastsPanel(deps)
+	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
+	loaded := runCmd(t, cmd).(forecastsLoadedMsg)
+	p, _ = p.Update(loaded)
+
+	_, cmd = p.Update(pKey("n"))
+	form := runCmd(t, cmd).(openModalMsg).modal.(*forecastFormModal)
+	form.concept.SetValue("Adobs")
+	form.gross.SetValue("not-a-number")
+	form.plannedDate.SetValue("2026-04-15")
+	// Move to the last field so Enter triggers submit (and validation).
+	form.focused = int(fieldPlannedDate)
+
+	var tm tea.Model = form
+	updated, submitCmd := tm.Update(pKey("enter"))
+	// On a validation error the form does not emit a close/submit command...
+	if submitCmd != nil {
+		t.Fatalf("expected nil cmd (form stays open) on invalid gross, got a command")
+	}
+	// ...and the inline error is visible.
+	if fm := updated.(*forecastFormModal); !strings.Contains(fm.View(), "Import brut no vàlid") {
+		t.Errorf("expected an inline gross-validation error in the form view; got:\n%s", fm.View())
+	}
+}
+
 func TestForecastsPanel_CreateViaFormCallsAdminCreate(t *testing.T) {
 	deps, q := testDeps(t)
 	seedDraftTaxonomyYear(t, q, 2026)
@@ -303,6 +333,8 @@ func TestForecastsPanel_CreateViaFormCallsAdminCreate(t *testing.T) {
 	form.description.SetValue("Adobs de primavera")
 	form.gross.SetValue("250.00")
 	form.plannedDate.SetValue("2026-04-15")
+	// Move to the last field so Enter triggers submit.
+	form.focused = int(fieldPlannedDate)
 
 	var tm tea.Model = form
 	_, submitCmd := tm.Update(pKey("enter"))
@@ -317,7 +349,7 @@ func TestForecastsPanel_CreateViaFormCallsAdminCreate(t *testing.T) {
 				t.Fatalf("unexpected error from AdminCreate: %v", fl.err)
 			}
 			for _, f := range fl.forecasts {
-				if f.Concept() == "Adobs" && f.PartnerID() == 1 {
+				if f.Concept() == "Adobs" && f.Partner().ID() == 1 {
 					sawCreated = true
 				}
 			}

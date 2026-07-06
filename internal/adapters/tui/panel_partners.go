@@ -224,17 +224,24 @@ func (p partnersPanel) View(width, height int) string {
 	if len(p.partners) == 0 {
 		return dimStyle.Render("(cap soci)")
 	}
+	off := scrollOffset(p.selected, len(p.partners), height)
+	end := off + height
+	if end > len(p.partners) {
+		end = len(p.partners)
+	}
 	var b strings.Builder
-	for i, partner := range p.partners {
+	for i, partner := range p.partners[off:end] {
+		idx := off + i
 		board := ""
 		if partner.BoardMember() {
 			board = " [junta]"
 		}
-		line := fmt.Sprintf("%d  %s %s%s", partner.ID(), partner.Name(), partner.Surname(), board)
-		if i == p.selected {
-			line = focusedPanelStyle.Render("> " + line)
+		raw := truncate(fmt.Sprintf("%d  %s %s%s", partner.ID(), partner.Name(), partner.Surname(), board), width-2)
+		var line string
+		if idx == p.selected {
+			line = focusedPanelStyle.Render("> " + raw)
 		} else {
-			line = "  " + line
+			line = "  " + raw
 		}
 		b.WriteString(line)
 		b.WriteString("\n")

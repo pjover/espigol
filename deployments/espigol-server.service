@@ -1,0 +1,22 @@
+[Unit]
+Description=Espigol socis web server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=espigol
+Group=espigol
+EnvironmentFile=/etc/espigol/espigol.env
+Environment=ESPIGOL_HOME=/var/lib/espigol
+ExecStart=/usr/local/bin/espigol --server
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/espigol
+
+[Install]
+WantedBy=multi-user.target

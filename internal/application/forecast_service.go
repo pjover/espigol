@@ -107,7 +107,7 @@ func (s *ForecastService) Create(ctx context.Context, actor model.Partner, in Fo
 		if err := authorizeScope(ctx, r, actor, scope, actor.ID()); err != nil {
 			return err
 		}
-		f, err := model.NewUnsavedExpenseForecast(actor.ID(), in.Concept, in.Description,
+		f, err := model.NewUnsavedExpenseForecast(actor, in.Concept, in.Description,
 			in.GrossAmount, model.ZeroMoney(), nil, in.PlannedDate, w.Year(), in.SubtypeCode, scope, now, true)
 		if err != nil {
 			return err
@@ -136,7 +136,7 @@ func (s *ForecastService) Update(ctx context.Context, actor model.Partner, id st
 		if !ok || existing.Year() != w.Year() {
 			return ErrForecastNotFound
 		}
-		if err := authorizeScope(ctx, r, actor, existing.Scope(), existing.PartnerID()); err != nil {
+		if err := authorizeScope(ctx, r, actor, existing.Scope(), existing.Partner().ID()); err != nil {
 			return err
 		}
 		scope, err := buildScope(in)
@@ -144,10 +144,10 @@ func (s *ForecastService) Update(ctx context.Context, actor model.Partner, id st
 			return err
 		}
 		// the new scope must also be one the actor may use
-		if err := authorizeScope(ctx, r, actor, scope, existing.PartnerID()); err != nil {
+		if err := authorizeScope(ctx, r, actor, scope, existing.Partner().ID()); err != nil {
 			return err
 		}
-		updated, err := model.NewExpenseForecast(id, existing.PartnerID(), in.Concept, in.Description,
+		updated, err := model.NewExpenseForecast(id, existing.Partner(), in.Concept, in.Description,
 			in.GrossAmount, existing.ApprovedAmount(), existing.ApprovedOn(), in.PlannedDate, w.Year(),
 			in.SubtypeCode, scope, existing.AddedOn(), existing.Enabled())
 		if err != nil {
@@ -174,7 +174,7 @@ func (s *ForecastService) Delete(ctx context.Context, actor model.Partner, id st
 		if !ok || existing.Year() != w.Year() {
 			return ErrForecastNotFound
 		}
-		if err := authorizeScope(ctx, r, actor, existing.Scope(), existing.PartnerID()); err != nil {
+		if err := authorizeScope(ctx, r, actor, existing.Scope(), existing.Partner().ID()); err != nil {
 			return err
 		}
 		if err := r.Forecasts.Delete(ctx, id); err != nil {
@@ -194,7 +194,7 @@ func (s *ForecastService) Get(ctx context.Context, actor model.Partner, id strin
 		if !ok {
 			return ErrForecastNotFound
 		}
-		if err := authorizeScope(ctx, r, actor, f.Scope(), f.PartnerID()); err != nil {
+		if err := authorizeScope(ctx, r, actor, f.Scope(), f.Partner().ID()); err != nil {
 			return err
 		}
 		out = f
@@ -248,7 +248,7 @@ func (s *ForecastService) Dashboard(ctx context.Context, actor model.Partner) (D
 		for _, f := range forecasts {
 			switch f.Scope().Kind() {
 			case model.ScopePartner:
-				if f.PartnerID() == actor.ID() {
+				if f.Partner().ID() == actor.ID() {
 					view.Mine = append(view.Mine, f)
 				}
 			case model.ScopeCommon:
@@ -327,7 +327,14 @@ func (s *ForecastService) AdminCreate(ctx context.Context, actorEmail string, ye
 		if err != nil {
 			return err
 		}
-		f, err := model.NewUnsavedExpenseForecast(partnerID, in.Concept, in.Description,
+		partner, ok, err := r.Partners.FindByID(ctx, partnerID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrPartnerNotFound
+		}
+		f, err := model.NewUnsavedExpenseForecast(partner, in.Concept, in.Description,
 			in.GrossAmount, model.ZeroMoney(), nil, in.PlannedDate, w.Year(), in.SubtypeCode, scope, now, true)
 		if err != nil {
 			return err
@@ -361,7 +368,7 @@ func (s *ForecastService) AdminUpdate(ctx context.Context, actorEmail string, id
 		if err != nil {
 			return err
 		}
-		updated, err := model.NewExpenseForecast(id, existing.PartnerID(), in.Concept, in.Description,
+		updated, err := model.NewExpenseForecast(id, existing.Partner(), in.Concept, in.Description,
 			in.GrossAmount, existing.ApprovedAmount(), existing.ApprovedOn(), in.PlannedDate, existing.Year(),
 			in.SubtypeCode, scope, existing.AddedOn(), existing.Enabled())
 		if err != nil {

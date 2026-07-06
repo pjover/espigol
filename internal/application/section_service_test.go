@@ -253,7 +253,7 @@ func seedOpenWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode s
 		t.Fatal(err)
 	}
 	gross := model.MoneyOf(100)
-	f, err := model.NewUnsavedExpenseForecast(1, "Concept", "", gross, model.ZeroMoney(), nil,
+	f, err := model.NewUnsavedExpenseForecast(soci, "Concept", "", gross, model.ZeroMoney(), nil,
 		time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), 2026, "a1", scope, scNow(), true)
 	if err != nil {
 		t.Fatal(err)
@@ -303,7 +303,7 @@ func seedClosedWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode
 		t.Fatal(err)
 	}
 	gross := model.MoneyOf(100)
-	f, err := model.NewUnsavedExpenseForecast(1, "Concept", "", gross, model.ZeroMoney(), nil,
+	f, err := model.NewUnsavedExpenseForecast(soci, "Concept", "", gross, model.ZeroMoney(), nil,
 		time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC), 2025, "a1", scope, scNow(), true)
 	if err != nil {
 		t.Fatal(err)

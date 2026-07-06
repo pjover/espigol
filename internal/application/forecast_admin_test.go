@@ -90,8 +90,8 @@ func TestForecastService_AdminCreate_DraftYear_OwnedByImpersonatedPartner(t *tes
 	if err != nil {
 		t.Fatalf("admin create on DRAFT year: %v", err)
 	}
-	if f.PartnerID() != 5 {
-		t.Errorf("want owned by partner 5, got %d", f.PartnerID())
+	if f.Partner().ID() != 5 {
+		t.Errorf("want owned by partner 5, got %d", f.Partner().ID())
 	}
 	if f.Scope().Kind() != model.ScopePartner {
 		t.Errorf("want PARTNER scope, got %v", f.Scope().Kind())
@@ -125,8 +125,8 @@ func TestForecastService_AdminCreate_OpenYear_CommonForecast_NoBoardMembership(t
 	if f.Scope().Kind() != model.ScopeCommon {
 		t.Errorf("want COMMON scope, got %v", f.Scope().Kind())
 	}
-	if f.PartnerID() != 1 {
-		t.Errorf("want owned by partner 1, got %d", f.PartnerID())
+	if f.Partner().ID() != 1 {
+		t.Errorf("want owned by partner 1, got %d", f.Partner().ID())
 	}
 }
 

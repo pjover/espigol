@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/pressly/goose/v3"
 	migrations "github.com/pjover/espigol/db/migrations"
+	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
 

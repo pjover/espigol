@@ -167,20 +167,27 @@ func (p sectionsPanel) View(width, height int) string {
 	if len(p.sections) == 0 {
 		return dimStyle.Render("(cap secció)")
 	}
+	off := scrollOffset(p.selected, len(p.sections), height)
+	end := off + height
+	if end > len(p.sections) {
+		end = len(p.sections)
+	}
 	var b strings.Builder
-	for i, sec := range p.sections {
+	for i, sec := range p.sections[off:end] {
+		idx := off + i
 		state := "activa"
 		if !sec.Active() {
 			state = "inactiva"
 		}
-		line := fmt.Sprintf("%s  %s  (%s)", sec.Code(), sec.Label(), state)
-		if !sec.Active() {
-			line = dimStyle.Render(line)
-		}
-		if i == p.selected {
-			line = focusedPanelStyle.Render("> " + line)
-		} else {
-			line = "  " + line
+		raw := truncate(fmt.Sprintf("%s  %s  (%s)", sec.Code(), sec.Label(), state), width-2)
+		var line string
+		switch {
+		case idx == p.selected:
+			line = focusedPanelStyle.Render("> " + raw)
+		case !sec.Active():
+			line = "  " + dimStyle.Render(raw)
+		default:
+			line = "  " + raw
 		}
 		b.WriteString(line)
 		b.WriteString("\n")

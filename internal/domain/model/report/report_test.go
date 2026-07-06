@@ -8,7 +8,7 @@ import (
 
 func TestReportDataStructsCompose(t *testing.T) {
 	rd := ReportData{
-		Year:                2026,
+		Year:                 2026,
 		HasNegativeRemainder: false,
 		Categories: []CategoryReportData{{
 			Category: model.CategoryCurrent,
@@ -22,15 +22,15 @@ func TestReportDataStructsCompose(t *testing.T) {
 				}},
 			},
 			Sections: SectionsData{
-				Available:  model.MoneyOf(27120),
-				Total:      model.MoneyOf(27111),
-				Remainder:  model.MoneyOf(9),
+				Available:      model.MoneyOf(27120),
+				Total:          model.MoneyOf(27111),
+				Remainder:      model.MoneyOf(9),
 				SectionDetails: []SectionDetail{{SectionCode: "oliva", Label: "Secció d'oliva", Total: model.MoneyOf(19721)}},
 				Partners: PartnersData{
-					GrandTotal:    model.ZeroMoney(),
+					GrandTotal:     model.ZeroMoney(),
 					FinalRemainder: model.MoneyOf(9),
-					Allocations:   []PartnerAllocation{},
-					SubtypeTotals: []SubtypeTotal{},
+					Allocations:    []PartnerAllocation{},
+					SubtypeTotals:  []SubtypeTotal{},
 					PartnerDetails: []PartnerDetail{},
 				},
 			},

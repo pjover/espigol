@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/pjover/espigol/internal/application"
 	"github.com/pjover/espigol/internal/domain/model"
@@ -153,17 +153,67 @@ func (p forecastsPanel) forecastForm(existing *model.ExpenseForecast) tea.Model 
 	return newForecastFormModal(p.deps, p.year, existing, p.reloadCmd)
 }
 
+// forecastLine formats a single forecast row, truncating only the concept so
+// that ID, partner, scope, and amount are always fully visible.
+func forecastLine(f model.ExpenseForecast, available int) string {
+	prefix := prefix(f)
+	conceptMax := available - 2 - len([]rune(prefix))
+	if conceptMax < 3 {
+		return truncate(prefix+f.Concept(), available)
+	}
+	return prefix + truncate(f.Concept(), conceptMax)
+}
+
+func prefix(f model.ExpenseForecast) string {
+	var name string
+	switch f.Scope().Kind() {
+	case model.ScopeCommon:
+		name = "Comú"
+	case model.ScopeSection:
+		name = strings.ToUpper(f.Scope().SectionCode()[:1]) + f.Scope().SectionCode()[1:]
+	default:
+		name = truncate(f.Partner().Name(), 10)
+	}
+	return fmt.Sprintf("%s  %-10s  %9s €  ", f.ID(), name, formatMoney(f.GrossAmount()))
+}
+
+// formatMoney formats a Money value using European notation: "." as thousands
+// separator and "," as decimal separator (e.g. 31900.00 → "31.900,00").
+func formatMoney(m model.Money) string {
+	s := m.String()
+	dot := strings.LastIndex(s, ".")
+	intPart, decPart := s, "00"
+	if dot >= 0 {
+		intPart, decPart = s[:dot], s[dot+1:]
+	}
+	var b strings.Builder
+	for i, r := range intPart {
+		if i > 0 && (len(intPart)-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+		b.WriteRune(r)
+	}
+	return b.String() + "," + decPart
+}
+
 func (p forecastsPanel) View(width, height int) string {
 	if len(p.forecasts) == 0 {
 		return dimStyle.Render("(cap previsió)")
 	}
+	off := scrollOffset(p.selected, len(p.forecasts), height)
+	end := off + height
+	if end > len(p.forecasts) {
+		end = len(p.forecasts)
+	}
 	var b strings.Builder
-	for i, f := range p.forecasts {
-		line := fmt.Sprintf("%s  soci %d  %s  %s  %s €", f.ID(), f.PartnerID(), f.Scope().Kind(), f.Concept(), f.GrossAmount())
-		if i == p.selected {
-			line = focusedPanelStyle.Render("> " + line)
+	for i, f := range p.forecasts[off:end] {
+		idx := off + i
+		raw := forecastLine(f, width-2)
+		var line string
+		if idx == p.selected {
+			line = focusedPanelStyle.Render("> " + raw)
 		} else {
-			line = "  " + line
+			line = "  " + raw
 		}
 		b.WriteString(line)
 		b.WriteString("\n")
@@ -181,7 +231,7 @@ func (p forecastsPanel) Detail() string {
 		scope += ":" + f.Scope().SectionCode()
 	}
 	detail := fmt.Sprintf("%s  ·  soci %d  ·  %s  ·  %s  ·  Subtipus: %s  ·  Import: %s €  ·  Data prevista: %s",
-		f.ID(), f.PartnerID(), scope, f.Concept(), f.SubtypeCode(), f.GrossAmount(), f.PlannedDate().Format("2006-01-02"))
+		f.ID(), f.Partner().ID(), scope, f.Concept(), f.SubtypeCode(), formatMoney(f.GrossAmount()), f.PlannedDate().Format("2006-01-02"))
 	if errLine := errDetail(p.err); errLine != "" {
 		detail += "\n" + errLine
 	}
@@ -223,9 +273,12 @@ type forecastFormModal struct {
 
 	// Text fields.
 	concept     textinput.Model
-	description textinput.Model
+	description textarea.Model
 	gross       textinput.Model
 	plannedDate textinput.Model
+
+	// errMsg holds an inline validation message; non-empty keeps the modal open.
+	errMsg string
 
 	// focused indexes into fieldOrder.
 	focused int
@@ -254,16 +307,26 @@ const (
 func newForecastFormModal(deps Deps, year int, existing *model.ExpenseForecast, reload func(run func(ctx context.Context) error) tea.Cmd) *forecastFormModal {
 	ctx := context.Background()
 	partners, _ := deps.Partners.List(ctx)
-	subtypes, _ := deps.Taxonomy.ListSubtypes(ctx, year)
+	// When editing, AdminUpdate keeps the forecast's own year, so the subtype
+	// list must come from that year (not the panel's year context).
+	subtypeYear := year
+	if existing != nil {
+		subtypeYear = existing.Year()
+	}
+	subtypes, _ := deps.Taxonomy.ListSubtypes(ctx, subtypeYear)
 	sections, _ := deps.Sections.List(ctx)
 	scopes := []model.ScopeKind{model.ScopePartner, model.ScopeCommon, model.ScopeSection}
 
 	title := "Nova previsió"
-	concept, description, gross, plannedDate := textinput.New(), textinput.New(), textinput.New(), textinput.New()
+	concept, gross, plannedDate := textinput.New(), textinput.New(), textinput.New()
 	concept.Placeholder = "Concepte"
-	description.Placeholder = "Descripció"
 	gross.Placeholder = "100.00"
 	plannedDate.Placeholder = "2026-03-01"
+
+	description := textarea.New()
+	description.Placeholder = "Descripció"
+	description.ShowLineNumbers = false
+	description.CharLimit = 0
 
 	partnerIdx, scopeIdx, sectionIdx, subtypeIdx := 0, 0, 0, 0
 
@@ -274,7 +337,7 @@ func newForecastFormModal(deps Deps, year int, existing *model.ExpenseForecast, 
 		gross.SetValue(existing.GrossAmount().String())
 		plannedDate.SetValue(existing.PlannedDate().Format("2006-01-02"))
 		for i, pt := range partners {
-			if pt.ID() == existing.PartnerID() {
+			if pt.ID() == existing.Partner().ID() {
 				partnerIdx = i
 				break
 			}
@@ -345,7 +408,18 @@ func (m *forecastFormModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m, closeModalCmd
 	case "enter":
-		return m, tea.Batch(m.submit(), closeModalCmd)
+		// Enter always submits from any field.
+		if cmd := m.submit(); cmd != nil {
+			return m, tea.Batch(cmd, closeModalCmd)
+		}
+		return m, nil
+	case "alt+enter":
+		if forecastFormField(m.focused) == fieldDescription {
+			var cmd tea.Cmd
+			m.description, cmd = m.description.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			return m, cmd
+		}
+		return m, nil
 	case "tab", "down":
 		m.blurCurrent()
 		m.focused = (m.focused + 1) % int(forecastFormFieldCount)
@@ -429,7 +503,7 @@ func (m *forecastFormModal) focusCurrent() {
 	case fieldConcept:
 		m.concept.Focus()
 	case fieldDescription:
-		m.description.Focus()
+		_ = m.description.Focus()
 	case fieldGross:
 		m.gross.Focus()
 	case fieldPlannedDate:
@@ -443,12 +517,15 @@ func (m *forecastFormModal) focusCurrent() {
 // required field fails to parse — the modal still closes; this mirrors
 // form.go's onSubmit convention where parse failures are simply dropped.
 func (m *forecastFormModal) submit() tea.Cmd {
+	m.errMsg = ""
 	gross, err := model.MoneyFromString(strings.TrimSpace(m.gross.Value()))
 	if err != nil {
+		m.errMsg = "Import brut no vàlid (exemple: 100.00)"
 		return nil
 	}
 	plannedDate, err := time.Parse("2006-01-02", strings.TrimSpace(m.plannedDate.Value()))
 	if err != nil {
+		m.errMsg = "Data prevista no vàlida (format: 2026-03-01)"
 		return nil
 	}
 	var scopeKind model.ScopeKind
@@ -507,17 +584,26 @@ func (m *forecastFormModal) View() string {
 	}
 	b.WriteString(m.selectorLine("Subtipus", fieldSubtype, m.subtypeLabel()))
 	b.WriteString(m.textLine("Concepte", fieldConcept, m.concept))
-	b.WriteString(m.textLine("Descripció", fieldDescription, m.description))
+
+	descLabel := dimStyle.Render("Descripció")
+	if forecastFormField(m.focused) == fieldDescription {
+		descLabel = focusedPanelStyle.Render("Descripció")
+	}
+	b.WriteString(fmt.Sprintf("%s:\n%s\n", descLabel, m.description.View()))
+
 	b.WriteString(m.textLine("Import brut", fieldGross, m.gross))
 	b.WriteString(m.textLine("Data prevista", fieldPlannedDate, m.plannedDate))
+
+	if m.errMsg != "" {
+		b.WriteString("\n")
+		b.WriteString(redStyle.Render("Error: " + m.errMsg))
+		b.WriteString("\n")
+	}
 
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("tab/shift+tab: mou camp · left/right: canvia selector · enter: desa · esc: cancel·la"))
 
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(1, 2)
-	return box.Render(b.String())
+	return modalStyle.Render(b.String())
 }
 
 func (m *forecastFormModal) partnerLabel() string {

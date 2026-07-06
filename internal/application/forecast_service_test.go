@@ -97,7 +97,7 @@ func TestForecastService_SociCreateAndOwnEdit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if f.PartnerID() != 1 || f.Scope().Kind() != model.ScopePartner || f.ID() == "" {
+	if f.Partner().ID() != 1 || f.Scope().Kind() != model.ScopePartner || f.ID() == "" {
 		t.Errorf("created wrong: %+v", f)
 	}
 	in := partnerInput("600.00")

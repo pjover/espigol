@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -95,7 +96,7 @@ func (p yearsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 			p.selected = max(0, len(p.windows)-1)
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 
@@ -117,7 +118,7 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 			p.selected--
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 	case "down", "j":
@@ -125,23 +126,31 @@ func (p yearsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 			p.selected++
 		}
 		if w, ok := p.selectedWindow(); ok {
-			return p, yearSelectedCmd(w.Year())
+			return p, yearSelectedCmd(w.Year(), w.State())
 		}
 		return p, nil
 	case "n":
 		return p, openModalCmd(p.newYearForm())
 	case "o":
+		w, ok := p.selectedWindow()
+		if !ok {
+			return p, nil
+		}
+		if w.State() == model.WindowClosed {
+			return p, p.confirmCmd("Reobrir l'any?", p.deps.Windows.Reopen)
+		}
 		return p, p.confirmCmd("Obrir l'any?", p.deps.Windows.Open)
 	case "c":
 		return p, p.confirmCmd("Tancar l'any?", func(ctx context.Context, year int) error {
 			_, err := p.deps.Windows.Close(ctx, year)
 			return err
 		})
-	case "a":
-		return p, p.confirmCmd("Esmenar l'any?", func(ctx context.Context, year int) error {
-			_, err := p.deps.Windows.Amend(ctx, year)
-			return err
-		})
+	case "e":
+		w, ok := p.selectedWindow()
+		if !ok || w.State() == model.WindowClosed {
+			return p, nil
+		}
+		return p, openModalCmd(p.editYearForm(w))
 	case "r":
 		w, ok := p.selectedWindow()
 		if !ok {
@@ -197,18 +206,53 @@ func (p yearsPanel) newYearForm() formModal {
 	return newFormModal("Nou any", fields, onSubmit)
 }
 
+// editYearForm builds the edit form for an existing DRAFT or OPEN year:
+// deadline (YYYY-MM-DD), currentExpenseLimit, investmentExpenseLimit.
+func (p yearsPanel) editYearForm(w model.SubmissionWindow) formModal {
+	fields := []formFieldDef{
+		{Label: "Termini", Placeholder: "2026-12-31", Value: w.Deadline().Format("2006-01-02")},
+		{Label: "Límit corrent", Placeholder: "30000.00", Value: w.CurrentExpenseLimit().String()},
+		{Label: "Límit inversió", Placeholder: "70000.00", Value: w.InvestmentExpenseLimit().String()},
+	}
+	onSubmit := func(values map[string]string) tea.Cmd {
+		deadline, err := time.Parse("2006-01-02", strings.TrimSpace(values["Termini"]))
+		if err != nil {
+			return nil
+		}
+		current, err := model.MoneyFromString(strings.TrimSpace(values["Límit corrent"]))
+		if err != nil {
+			return nil
+		}
+		investment, err := model.MoneyFromString(strings.TrimSpace(values["Límit inversió"]))
+		if err != nil {
+			return nil
+		}
+		year := w.Year()
+		return p.mutateCmd(func(ctx context.Context) error {
+			return p.deps.Windows.EditYear(ctx, year, deadline, current, investment)
+		})
+	}
+	return newFormModal("Editar any", fields, onSubmit)
+}
+
 func (p yearsPanel) View(width, height int) string {
 	if len(p.windows) == 0 {
 		return dimStyle.Render("(cap any)")
 	}
+	off := scrollOffset(p.selected, len(p.windows), height)
+	end := off + height
+	if end > len(p.windows) {
+		end = len(p.windows)
+	}
 	var b strings.Builder
-	for i, w := range p.windows {
-		line := fmt.Sprintf("%d  %s", w.Year(), w.State())
-		styled := stateStyle(w.State()).Render(line)
-		if i == p.selected {
-			styled = focusedPanelStyle.Render("> ") + styled
+	for i, w := range p.windows[off:end] {
+		idx := off + i
+		raw := truncate(fmt.Sprintf("%d  %s", w.Year(), w.State()), width-2)
+		var styled string
+		if idx == p.selected {
+			styled = focusedPanelStyle.Render("> ") + stateStyle(w.State()).Render(raw)
 		} else {
-			styled = "  " + styled
+			styled = "  " + stateStyle(w.State()).Render(raw)
 		}
 		b.WriteString(styled)
 		b.WriteString("\n")
@@ -242,7 +286,7 @@ func (p yearsPanel) Actions() []Action {
 		{Key: "n", Label: "nou any"},
 		{Key: "o", Label: "obrir"},
 		{Key: "c", Label: "tancar"},
-		{Key: "a", Label: "esmenar"},
+		{Key: "e", Label: "edita"},
 		{Key: "r", Label: "informe"},
 	}
 }

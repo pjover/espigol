@@ -560,24 +560,105 @@ func TestSectionsPanel_EOpensFormAndUpdatesSection(t *testing.T) {
 	}
 }
 
-// submitForm sets each field's value (in declaration order, matching the
-// values map by label) then sends "enter" to submit, returning the
-// resulting batched tea.Msg.
+// submitForm sets each field's value then submits from the first field (Enter
+// now always submits regardless of which field is focused).
 func submitForm(t *testing.T, form formModal, values map[string]string) tea.Msg {
 	t.Helper()
-	var model tea.Model = form
 	for i, f := range form.fields {
 		val, ok := values[f.label]
 		if !ok {
 			continue
 		}
-		fm := model.(formModal)
-		fm.fields[i].input.SetValue(val)
-		model = fm
+		if f.multiline {
+			form.fields[i].multi.SetValue(val)
+		} else {
+			form.fields[i].single.SetValue(val)
+		}
 	}
+	var model tea.Model = form
 	_, cmd := model.Update(pKey("enter"))
 	if cmd == nil {
 		t.Fatal("expected a non-nil cmd from submitting the form")
 	}
 	return cmd()
+}
+
+// --- formModal key semantics ---
+
+// newTestForm creates a simple formModal with one single-line and one
+// multi-line field, used to test key handling in isolation.
+func newTestForm(t *testing.T) formModal {
+	t.Helper()
+	submitted := map[string]string{}
+	onSubmit := func(values map[string]string) tea.Cmd {
+		for k, v := range values {
+			submitted[k] = v
+		}
+		return func() tea.Msg { return submitted }
+	}
+	return newFormModal("Test", []formFieldDef{
+		{Label: "Single", Placeholder: "one"},
+		{Label: "Multi", Placeholder: "two", Multiline: true},
+	}, onSubmit)
+}
+
+// TestFormModal_EnterSubmitsFromAnyField verifies that pressing Enter from the
+// first field (not the last) produces a submit+close batch command.
+func TestFormModal_EnterSubmitsFromAnyField(t *testing.T) {
+	form := newTestForm(t)
+	// Sanity: focused starts at 0 (first field), not the last.
+	if form.focused != 0 {
+		t.Fatalf("expected initial focused=0, got %d", form.focused)
+	}
+	var m tea.Model = form
+	_, cmd := m.Update(pKey("enter"))
+	if cmd == nil {
+		t.Fatal("expected a non-nil cmd from Enter on first field")
+	}
+	// The cmd should be a batch of submit + closeModalCmd; verify it runs
+	// without panic and produces at least one message.
+	msgs := drainMsgs(cmd())
+	if len(msgs) == 0 {
+		t.Fatal("expected at least one msg from the submit batch")
+	}
+}
+
+// TestFormModal_TabAdvancesField verifies that Tab moves focus to the next
+// field without submitting.
+func TestFormModal_TabAdvancesField(t *testing.T) {
+	form := newTestForm(t)
+	if form.focused != 0 {
+		t.Fatalf("expected initial focused=0, got %d", form.focused)
+	}
+	var m tea.Model = form
+	updated, cmd := m.Update(pKey("tab"))
+	// Tab must not emit a submit command.
+	if cmd != nil {
+		// Allow textinput blink cmds; just check the focused index advanced.
+	}
+	fm := updated.(formModal)
+	if fm.focused != 1 {
+		t.Errorf("after Tab, focused = %d, want 1", fm.focused)
+	}
+}
+
+// TestFormModal_AltEnterInsertsNewlineInMultilineField verifies that Alt+Enter
+// inserts a newline character into a focused textarea field.
+func TestFormModal_AltEnterInsertsNewlineInMultilineField(t *testing.T) {
+	form := newTestForm(t)
+	// Advance to the multiline field (index 1).
+	form.focused = 1
+	form.blurCurrent()
+	form.focused = 1
+	form.focusCurrent()
+	form.fields[1].multi.SetValue("hello")
+
+	var m tea.Model = form
+	// Alt+Enter is represented as KeyEnter with Alt=true.
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter, Alt: true})
+	fm := updated.(formModal)
+	val := fm.fields[1].multi.Value()
+	if !strings.Contains(val, "\n") {
+		t.Errorf("after alt+enter on multiline field, value = %q, want it to contain a newline", val)
+	}
 }

@@ -74,8 +74,12 @@ func (s *BoardAuthorizationService) Grant(ctx context.Context, partnerID int, sc
 func (s *BoardAuthorizationService) Revoke(ctx context.Context, partnerID int, scope model.ScopeKind, sectionCode string) error {
 	now := s.clock.Now()
 	return s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
-		if err := r.BoardAuth.Remove(ctx, partnerID, scope, sectionCode); err != nil {
+		removed, err := r.BoardAuth.Remove(ctx, partnerID, scope, sectionCode)
+		if err != nil {
 			return err
+		}
+		if removed == 0 {
+			return nil // nothing matched; don't audit a no-op revoke
 		}
 		return adminAudit(ctx, r, s.adminEmail, model.AuditBoardAuthChanged, "BoardAuthorization", itoa(partnerID), now)
 	})

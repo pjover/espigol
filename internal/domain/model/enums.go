@@ -55,9 +55,9 @@ func ParseExpenseCategory(s string) (ExpenseCategory, error) {
 type PartnerType string
 
 const (
-	Productor     PartnerType = "Productor"
-	Patrocinador  PartnerType = "Patrocinador"
-	Collaborador  PartnerType = "Col·laborador"
+	Productor    PartnerType = "Productor"
+	Patrocinador PartnerType = "Patrocinador"
+	Collaborador PartnerType = "Col·laborador"
 )
 
 func ParsePartnerType(s string) (PartnerType, error) {
@@ -77,6 +77,7 @@ const (
 	AuditForecastEdited   AuditKind = "FORECAST_EDITED"
 	AuditForecastDeleted  AuditKind = "FORECAST_DELETED"
 	AuditWindowOpened     AuditKind = "WINDOW_OPENED"
+	AuditWindowEdited     AuditKind = "WINDOW_EDITED"
 	AuditWindowClosed     AuditKind = "WINDOW_CLOSED"
 	AuditWindowAutoClosed AuditKind = "WINDOW_AUTO_CLOSED"
 	AuditReportGenerated  AuditKind = "REPORT_GENERATED"
@@ -84,7 +85,6 @@ const (
 	AuditPartnerEdited    AuditKind = "PARTNER_EDITED"
 	AuditNotificationSent AuditKind = "NOTIFICATION_SENT"
 	AuditMigration        AuditKind = "MIGRATION"
-	AuditPartnerSaved     AuditKind = "PARTNER_SAVED"
 	AuditSectionSaved     AuditKind = "SECTION_SAVED"
 	AuditTaxonomySaved    AuditKind = "TAXONOMY_SAVED"
 	AuditTaxonomyDeleted  AuditKind = "TAXONOMY_DELETED"
@@ -96,7 +96,7 @@ func ParseAuditKind(s string) (AuditKind, error) {
 	case AuditLogin, AuditForecastCreated, AuditForecastEdited, AuditForecastDeleted,
 		AuditWindowOpened, AuditWindowClosed, AuditWindowAutoClosed, AuditReportGenerated,
 		AuditPartnerCreated, AuditPartnerEdited, AuditNotificationSent, AuditMigration,
-		AuditPartnerSaved, AuditSectionSaved, AuditTaxonomySaved, AuditTaxonomyDeleted, AuditBoardAuthChanged:
+		AuditSectionSaved, AuditTaxonomySaved, AuditTaxonomyDeleted, AuditBoardAuthChanged:
 		return AuditKind(s), nil
 	default:
 		return "", fmt.Errorf("unknown AuditKind: %q", s)

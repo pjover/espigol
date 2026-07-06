@@ -23,6 +23,8 @@ func main() {
 	}
 	if *force {
 		_ = os.Remove(*to)
+		_ = os.Remove(*to + "-shm")
+		_ = os.Remove(*to + "-wal")
 	}
 	counts, err := transform.Run(context.Background(), *from, *to)
 	if err != nil {

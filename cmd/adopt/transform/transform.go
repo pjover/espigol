@@ -191,7 +191,14 @@ func Run(ctx context.Context, legacyPath, destPath string) (Counts, error) {
 		if err != nil {
 			return Counts{}, fmt.Errorf("mapping scope for %s: %w", lf.ID, err)
 		}
-		f, err := model.NewExpenseForecast(lf.ID, lf.PartnerID, lf.Concept, lf.Description,
+		partner, ok, err := partRepo.FindByID(ctx, lf.PartnerID)
+		if err != nil {
+			return Counts{}, fmt.Errorf("finding partner for %s: %w", lf.ID, err)
+		}
+		if !ok {
+			return Counts{}, fmt.Errorf("partner %d not found for forecast %s", lf.PartnerID, lf.ID)
+		}
+		f, err := model.NewExpenseForecast(lf.ID, partner, lf.Concept, lf.Description,
 			gross, approved, lf.ApprovedOn, lf.PlannedDate, lf.Year, lf.SubtypeCode, scope,
 			lf.AddedOn, lf.Enabled)
 		if err != nil {
@@ -318,4 +325,3 @@ func mapScope(catalan string) (model.ExpenseScope, error) {
 		return model.ExpenseScope{}, fmt.Errorf("unknown legacy scope %q", catalan)
 	}
 }
-

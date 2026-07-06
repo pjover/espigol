@@ -26,14 +26,20 @@ func NewSubmissionWindow(year int, state WindowState, openedAt, closedAt *time.T
 	return SubmissionWindow{year, state, openedAt, closedAt, deadline, current, investment}, nil
 }
 
-func (w SubmissionWindow) Year() int                       { return w.year }
-func (w SubmissionWindow) State() WindowState              { return w.state }
-func (w SubmissionWindow) OpenedAt() *time.Time            { return w.openedAt }
-func (w SubmissionWindow) ClosedAt() *time.Time            { return w.closedAt }
-func (w SubmissionWindow) Deadline() time.Time             { return w.deadline }
-func (w SubmissionWindow) CurrentExpenseLimit() Money      { return w.currentExpenseLimit }
-func (w SubmissionWindow) InvestmentExpenseLimit() Money   { return w.investmentExpenseLimit }
+func (w SubmissionWindow) Year() int                     { return w.year }
+func (w SubmissionWindow) State() WindowState            { return w.state }
+func (w SubmissionWindow) OpenedAt() *time.Time          { return w.openedAt }
+func (w SubmissionWindow) ClosedAt() *time.Time          { return w.closedAt }
+func (w SubmissionWindow) Deadline() time.Time           { return w.deadline }
+func (w SubmissionWindow) CurrentExpenseLimit() Money    { return w.currentExpenseLimit }
+func (w SubmissionWindow) InvestmentExpenseLimit() Money { return w.investmentExpenseLimit }
 
-func (w SubmissionWindow) WithState(s WindowState) SubmissionWindow { w.state = s; return w }
+func (w SubmissionWindow) WithState(s WindowState) SubmissionWindow  { w.state = s; return w }
 func (w SubmissionWindow) WithOpenedAt(t time.Time) SubmissionWindow { w.openedAt = &t; return w }
 func (w SubmissionWindow) WithClosedAt(t time.Time) SubmissionWindow { w.closedAt = &t; return w }
+func (w SubmissionWindow) WithDeadline(d time.Time) SubmissionWindow { w.deadline = d; return w }
+func (w SubmissionWindow) WithLimits(current, investment Money) SubmissionWindow {
+	w.currentExpenseLimit = current
+	w.investmentExpenseLimit = investment
+	return w
+}
