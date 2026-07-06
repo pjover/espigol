@@ -156,13 +156,44 @@ func (p forecastsPanel) forecastForm(existing *model.ExpenseForecast) tea.Model 
 // forecastLine formats a single forecast row, truncating only the concept so
 // that ID, partner, scope, and amount are always fully visible.
 func forecastLine(f model.ExpenseForecast, available int) string {
-	prefix := fmt.Sprintf("%s  soci %d  %s  ", f.ID(), f.Partner().ID(), f.Scope().Kind())
-	suffix := fmt.Sprintf("  %s €", f.GrossAmount())
-	conceptMax := available - 2 - len([]rune(prefix)) - len([]rune(suffix))
+	prefix := prefix(f)
+	conceptMax := available - 2 - len([]rune(prefix))
 	if conceptMax < 3 {
-		return truncate(prefix+f.Concept()+suffix, available)
+		return truncate(prefix+f.Concept(), available)
 	}
-	return prefix + truncate(f.Concept(), conceptMax) + suffix
+	return prefix + truncate(f.Concept(), conceptMax)
+}
+
+func prefix(f model.ExpenseForecast) string {
+	var name string
+	switch f.Scope().Kind() {
+	case model.ScopeCommon:
+		name = "Comú"
+	case model.ScopeSection:
+		name = strings.ToUpper(f.Scope().SectionCode()[:1]) + f.Scope().SectionCode()[1:]
+	default:
+		name = truncate(f.Partner().Name(), 10)
+	}
+	return fmt.Sprintf("%s  %-10s  %9s €  ", f.ID(), name, formatMoney(f.GrossAmount()))
+}
+
+// formatMoney formats a Money value using European notation: "." as thousands
+// separator and "," as decimal separator (e.g. 31900.00 → "31.900,00").
+func formatMoney(m model.Money) string {
+	s := m.String()
+	dot := strings.LastIndex(s, ".")
+	intPart, decPart := s, "00"
+	if dot >= 0 {
+		intPart, decPart = s[:dot], s[dot+1:]
+	}
+	var b strings.Builder
+	for i, r := range intPart {
+		if i > 0 && (len(intPart)-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+		b.WriteRune(r)
+	}
+	return b.String() + "," + decPart
 }
 
 func (p forecastsPanel) View(width, height int) string {
