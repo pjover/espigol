@@ -349,7 +349,7 @@ func TestForecastsPanel_CreateViaFormCallsAdminCreate(t *testing.T) {
 				t.Fatalf("unexpected error from AdminCreate: %v", fl.err)
 			}
 			for _, f := range fl.forecasts {
-				if f.Concept() == "Adobs" && f.PartnerID() == 1 {
+				if f.Concept() == "Adobs" && f.Partner().ID() == 1 {
 					sawCreated = true
 				}
 			}

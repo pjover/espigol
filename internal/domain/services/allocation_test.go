@@ -19,7 +19,11 @@ func d(t *testing.T, s string) model.Money {
 func mkForecast(t *testing.T, id string, partnerID int, gross string, scope model.ExpenseScope, subtype string) model.ExpenseForecast {
 	t.Helper()
 	planned := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
-	f, err := model.NewExpenseForecast(id, partnerID, "Concepte "+id, "", d(t, gross), model.ZeroMoney(),
+	p, err := model.NewPartner(partnerID, "Soci", "", "", "soci@e.test", "", model.Productor, 0, planned, false)
+	if err != nil {
+		t.Fatalf("partner %d: %v", partnerID, err)
+	}
+	f, err := model.NewExpenseForecast(id, p, "Concepte "+id, "", d(t, gross), model.ZeroMoney(),
 		nil, planned, 2026, subtype, scope, planned, true)
 	if err != nil {
 		t.Fatalf("forecast %s: %v", id, err)

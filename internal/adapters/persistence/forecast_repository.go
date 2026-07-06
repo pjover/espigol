@@ -67,6 +67,14 @@ func (r *ForecastRepository) Save(ctx context.Context, f model.ExpenseForecast) 
 	return r.q.UpdateForecast(ctx, mapper.ForecastToUpdate(f))
 }
 
+func (r *ForecastRepository) fetchPartner(ctx context.Context, partnerID int64) (model.Partner, error) {
+	row, err := r.q.GetPartner(ctx, partnerID)
+	if err != nil {
+		return model.Partner{}, err
+	}
+	return mapper.PartnerFromRow(row)
+}
+
 func (r *ForecastRepository) FindByID(ctx context.Context, id string) (model.ExpenseForecast, bool, error) {
 	row, err := r.q.GetForecast(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -75,7 +83,11 @@ func (r *ForecastRepository) FindByID(ctx context.Context, id string) (model.Exp
 	if err != nil {
 		return model.ExpenseForecast{}, false, err
 	}
-	f, err := mapper.ForecastFromRow(row)
+	partner, err := r.fetchPartner(ctx, row.PartnerID)
+	if err != nil {
+		return model.ExpenseForecast{}, false, err
+	}
+	f, err := mapper.ForecastFromRow(row, partner)
 	return f, err == nil, err
 }
 
@@ -86,7 +98,11 @@ func (r *ForecastRepository) ListByYear(ctx context.Context, year int) ([]model.
 	}
 	out := make([]model.ExpenseForecast, 0, len(rows))
 	for _, row := range rows {
-		f, err := mapper.ForecastFromRow(row)
+		partner, err := r.fetchPartner(ctx, row.PartnerID)
+		if err != nil {
+			return nil, err
+		}
+		f, err := mapper.ForecastFromRow(row, partner)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +117,7 @@ func (r *ForecastRepository) Delete(ctx context.Context, id string) error {
 
 // rebuildWithID returns a copy of f with the given id, re-running domain validation.
 func rebuildWithID(f model.ExpenseForecast, id string) (model.ExpenseForecast, error) {
-	return model.NewExpenseForecast(id, f.PartnerID(), f.Concept(), f.Description(),
+	return model.NewExpenseForecast(id, f.Partner(), f.Concept(), f.Description(),
 		f.GrossAmount(), f.ApprovedAmount(), f.ApprovedOn(), f.PlannedDate(), f.Year(),
 		f.SubtypeCode(), f.Scope(), f.AddedOn(), f.Enabled())
 }

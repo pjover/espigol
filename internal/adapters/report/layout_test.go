@@ -27,7 +27,11 @@ func buildGolden(t *testing.T) report.ReportData {
 	ram, _ := model.NewSectionScope("ramaderia")
 	mk := func(id string, pid int, gross string, scope model.ExpenseScope, sub string) model.ExpenseForecast {
 		planned := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
-		f, err := model.NewExpenseForecast(id, pid, "Concepte "+id, "", d(gross), model.ZeroMoney(), nil, planned, 2026, sub, scope, planned, true)
+		p, err := model.NewPartner(pid, "Soci", "", "", "soci@e.test", "", model.Productor, 0, planned, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := model.NewExpenseForecast(id, p, "Concepte "+id, "", d(gross), model.ZeroMoney(), nil, planned, 2026, sub, scope, planned, true)
 		if err != nil {
 			t.Fatal(err)
 		}

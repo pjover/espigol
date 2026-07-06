@@ -7,7 +7,7 @@ import (
 
 type ExpenseForecast struct {
 	id             string
-	partnerID      int
+	partner        Partner
 	concept        string
 	description    string
 	grossAmount    Money
@@ -21,9 +21,9 @@ type ExpenseForecast struct {
 	enabled        bool
 }
 
-func validateForecastFields(partnerID int, subtypeCode string, year int, plannedDate time.Time) error {
-	if partnerID < 0 {
-		return fmt.Errorf("partnerID must be >= 0, got %d", partnerID)
+func validateForecastFields(partner Partner, subtypeCode string, year int, plannedDate time.Time) error {
+	if partner.ID() < 0 {
+		return fmt.Errorf("partner.ID must be >= 0, got %d", partner.ID())
 	}
 	if subtypeCode == "" {
 		return fmt.Errorf("subtypeCode must not be empty")
@@ -34,33 +34,33 @@ func validateForecastFields(partnerID int, subtypeCode string, year int, planned
 	return nil
 }
 
-func NewExpenseForecast(id string, partnerID int, concept, description string,
+func NewExpenseForecast(id string, partner Partner, concept, description string,
 	gross, approved Money, approvedOn *time.Time, plannedDate time.Time, year int,
 	subtypeCode string, scope ExpenseScope, addedOn time.Time, enabled bool) (ExpenseForecast, error) {
 	if id == "" {
 		return ExpenseForecast{}, fmt.Errorf("forecast id must not be empty")
 	}
-	if err := validateForecastFields(partnerID, subtypeCode, year, plannedDate); err != nil {
+	if err := validateForecastFields(partner, subtypeCode, year, plannedDate); err != nil {
 		return ExpenseForecast{}, err
 	}
-	return ExpenseForecast{id, partnerID, concept, description, gross, approved,
+	return ExpenseForecast{id, partner, concept, description, gross, approved,
 		approvedOn, plannedDate, year, subtypeCode, scope, addedOn, enabled}, nil
 }
 
 // NewUnsavedExpenseForecast creates an ExpenseForecast without an id, for use before
 // the repository allocates the real CPYYnnn id. All other validations still apply.
-func NewUnsavedExpenseForecast(partnerID int, concept, description string,
+func NewUnsavedExpenseForecast(partner Partner, concept, description string,
 	gross, approved Money, approvedOn *time.Time, plannedDate time.Time, year int,
 	subtypeCode string, scope ExpenseScope, addedOn time.Time, enabled bool) (ExpenseForecast, error) {
-	if err := validateForecastFields(partnerID, subtypeCode, year, plannedDate); err != nil {
+	if err := validateForecastFields(partner, subtypeCode, year, plannedDate); err != nil {
 		return ExpenseForecast{}, err
 	}
-	return ExpenseForecast{"", partnerID, concept, description, gross, approved,
+	return ExpenseForecast{"", partner, concept, description, gross, approved,
 		approvedOn, plannedDate, year, subtypeCode, scope, addedOn, enabled}, nil
 }
 
-func (f ExpenseForecast) ID() string             { return f.id }
-func (f ExpenseForecast) PartnerID() int         { return f.partnerID }
+func (f ExpenseForecast) ID() string          { return f.id }
+func (f ExpenseForecast) Partner() Partner    { return f.partner }
 func (f ExpenseForecast) Concept() string        { return f.concept }
 func (f ExpenseForecast) Description() string    { return f.description }
 func (f ExpenseForecast) GrossAmount() Money     { return f.grossAmount }

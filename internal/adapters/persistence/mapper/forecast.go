@@ -24,7 +24,7 @@ func nullableSection(s model.ExpenseScope) sql.NullString {
 func ForecastToInsert(f model.ExpenseForecast) sqlc.InsertForecastParams {
 	return sqlc.InsertForecastParams{
 		ID:             f.ID(),
-		PartnerID:      int64(f.PartnerID()),
+		PartnerID:      int64(f.Partner().ID()),
 		Concept:        f.Concept(),
 		Description:    f.Description(),
 		GrossAmount:    f.GrossAmount().String(),
@@ -43,7 +43,7 @@ func ForecastToInsert(f model.ExpenseForecast) sqlc.InsertForecastParams {
 func ForecastToUpdate(f model.ExpenseForecast) sqlc.UpdateForecastParams {
 	return sqlc.UpdateForecastParams{
 		ID:             f.ID(),
-		PartnerID:      int64(f.PartnerID()),
+		PartnerID:      int64(f.Partner().ID()),
 		Concept:        f.Concept(),
 		Description:    f.Description(),
 		GrossAmount:    f.GrossAmount().String(),
@@ -59,7 +59,7 @@ func ForecastToUpdate(f model.ExpenseForecast) sqlc.UpdateForecastParams {
 	}
 }
 
-func ForecastFromRow(r sqlc.ExpenseForecast) (model.ExpenseForecast, error) {
+func ForecastFromRow(r sqlc.ExpenseForecast, partner model.Partner) (model.ExpenseForecast, error) {
 	gross, err := model.MoneyFromString(r.GrossAmount)
 	if err != nil {
 		return model.ExpenseForecast{}, err
@@ -92,6 +92,6 @@ func ForecastFromRow(r sqlc.ExpenseForecast) (model.ExpenseForecast, error) {
 	if err != nil {
 		return model.ExpenseForecast{}, err
 	}
-	return model.NewExpenseForecast(r.ID, int(r.PartnerID), r.Concept, r.Description,
+	return model.NewExpenseForecast(r.ID, partner, r.Concept, r.Description,
 		gross, approved, approvedOn, planned, int(r.Year), r.SubtypeCode, scope, added, r.Enabled == 1)
 }

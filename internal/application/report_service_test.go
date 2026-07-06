@@ -112,7 +112,11 @@ func TestReportService_Preview_MatchesGoldenTotals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		uf, err := model.NewUnsavedExpenseForecast(f.partnerID, "Concepte", "", amt, model.ZeroMoney(), nil,
+		p, ok, err := pr.FindByID(ctx, f.partnerID)
+		if err != nil || !ok {
+			t.Fatalf("partner %d: %v", f.partnerID, err)
+		}
+		uf, err := model.NewUnsavedExpenseForecast(p, "Concepte", "", amt, model.ZeroMoney(), nil,
 			planned, 2026, f.subtype, f.scope, planned, true)
 		if err != nil {
 			t.Fatal(err)

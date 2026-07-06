@@ -107,11 +107,11 @@ func computeCategory(cat model.ExpenseCategory, limit model.Money, in Allocation
 	partnerNames := map[int]string{}
 	var partnerOrder []int
 	for _, f := range partnerF {
-		if _, ok := partnerTotals[f.PartnerID()]; !ok {
-			partnerOrder = append(partnerOrder, f.PartnerID())
-			partnerNames[f.PartnerID()] = displayName(partnerByID, f.PartnerID())
+		if _, ok := partnerTotals[f.Partner().ID()]; !ok {
+			partnerOrder = append(partnerOrder, f.Partner().ID())
+			partnerNames[f.Partner().ID()] = displayName(partnerByID, f.Partner().ID())
 		}
-		partnerTotals[f.PartnerID()] = partnerTotals[f.PartnerID()].Plus(f.GrossAmount())
+		partnerTotals[f.Partner().ID()] = partnerTotals[f.Partner().ID()].Plus(f.GrossAmount())
 	}
 	grandTotal := model.ZeroMoney()
 	for _, id := range partnerOrder {
@@ -161,10 +161,10 @@ func perPartnerDetails(partnerF []model.ExpenseForecast, partnerByID map[int]mod
 	byPartner := map[int][]model.ExpenseForecast{}
 	var order []int
 	for _, f := range partnerF {
-		if _, ok := byPartner[f.PartnerID()]; !ok {
-			order = append(order, f.PartnerID())
+		if _, ok := byPartner[f.Partner().ID()]; !ok {
+			order = append(order, f.Partner().ID())
 		}
-		byPartner[f.PartnerID()] = append(byPartner[f.PartnerID()], f)
+		byPartner[f.Partner().ID()] = append(byPartner[f.Partner().ID()], f)
 	}
 	out := make([]report.PartnerDetail, 0, len(byPartner))
 	for _, id := range order {

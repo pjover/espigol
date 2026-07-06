@@ -156,7 +156,7 @@ func (p forecastsPanel) forecastForm(existing *model.ExpenseForecast) tea.Model 
 // forecastLine formats a single forecast row, truncating only the concept so
 // that ID, partner, scope, and amount are always fully visible.
 func forecastLine(f model.ExpenseForecast, available int) string {
-	prefix := fmt.Sprintf("%s  soci %d  %s  ", f.ID(), f.PartnerID(), f.Scope().Kind())
+	prefix := fmt.Sprintf("%s  soci %d  %s  ", f.ID(), f.Partner().ID(), f.Scope().Kind())
 	suffix := fmt.Sprintf("  %s €", f.GrossAmount())
 	conceptMax := available - 2 - len([]rune(prefix)) - len([]rune(suffix))
 	if conceptMax < 3 {
@@ -200,7 +200,7 @@ func (p forecastsPanel) Detail() string {
 		scope += ":" + f.Scope().SectionCode()
 	}
 	detail := fmt.Sprintf("%s  ·  soci %d  ·  %s  ·  %s  ·  Subtipus: %s  ·  Import: %s €  ·  Data prevista: %s",
-		f.ID(), f.PartnerID(), scope, f.Concept(), f.SubtypeCode(), f.GrossAmount(), f.PlannedDate().Format("2006-01-02"))
+		f.ID(), f.Partner().ID(), scope, f.Concept(), f.SubtypeCode(), f.GrossAmount(), f.PlannedDate().Format("2006-01-02"))
 	if errLine := errDetail(p.err); errLine != "" {
 		detail += "\n" + errLine
 	}
@@ -306,7 +306,7 @@ func newForecastFormModal(deps Deps, year int, existing *model.ExpenseForecast, 
 		gross.SetValue(existing.GrossAmount().String())
 		plannedDate.SetValue(existing.PlannedDate().Format("2006-01-02"))
 		for i, pt := range partners {
-			if pt.ID() == existing.PartnerID() {
+			if pt.ID() == existing.Partner().ID() {
 				partnerIdx = i
 				break
 			}
