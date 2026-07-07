@@ -122,6 +122,7 @@ func copyFile(src, dst string) error {
 	_, copyErr := io.Copy(out, in)
 	closeErr := out.Close()
 	if copyErr != nil {
+		os.Remove(dst)
 		return copyErr
 	}
 	return closeErr
