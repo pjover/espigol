@@ -31,6 +31,7 @@ type Config struct {
 	BusinessName string
 	OutputDir    string
 	BackupDir    string
+	ImportDir    string
 	LogoPath     string
 	Server       struct {
 		Port int
@@ -46,13 +47,14 @@ type Config struct {
 }
 
 // EnsureHome creates the espigol home directory tree (home/, reports/,
-// backups/) and writes a default config.yaml if one is not already present.
+// backups/, import/) and writes a default config.yaml if one is not already present.
 // It is idempotent and safe to call on an already-initialised home.
 func EnsureHome(home string) error {
 	for _, dir := range []string{
 		home,
 		filepath.Join(home, "reports"),
 		filepath.Join(home, "backups"),
+		filepath.Join(home, "import"),
 	} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return fmt.Errorf("creating %s: %w", dir, err)
@@ -135,6 +137,7 @@ func Load(home string) (*Config, error) {
 		BusinessName: v.GetString("business.name"),
 		OutputDir:    v.GetString("output.dir"),
 		BackupDir:    v.GetString("backup.dir"),
+		ImportDir:    filepath.Join(home, "import"),
 		LogoPath:     v.GetString("logo.path"),
 	}
 	cfg.Server.Port = v.GetInt("server.port")
