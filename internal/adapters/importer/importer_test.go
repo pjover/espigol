@@ -62,10 +62,10 @@ func TestLoad_YearMismatch(t *testing.T) {
 
 func TestLoad_BadFields(t *testing.T) {
 	cases := map[string]string{
-		"bad money": `{"year":2025,"forecasts":[{"partnerId":1,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"abc","plannedDate":"2025-06-15"}]}`,
-		"bad date":  `{"year":2025,"forecasts":[{"partnerId":1,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"nope"}]}`,
-		"bad scope": `{"year":2025,"forecasts":[{"partnerId":1,"scope":"WAT","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"2025-06-15"}]}`,
-		"section no code": `{"year":2025,"forecasts":[{"partnerId":1,"scope":"SECTION","sectionCode":"","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"2025-06-15"}]}`,
+		"bad money":        `{"year":2025,"forecasts":[{"partnerId":1,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"abc","plannedDate":"2025-06-15"}]}`,
+		"bad date":         `{"year":2025,"forecasts":[{"partnerId":1,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"nope"}]}`,
+		"bad scope":        `{"year":2025,"forecasts":[{"partnerId":1,"scope":"WAT","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"2025-06-15"}]}`,
+		"section no code":  `{"year":2025,"forecasts":[{"partnerId":1,"scope":"SECTION","sectionCode":"","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"2025-06-15"}]}`,
 		"common with code": `{"year":2025,"forecasts":[{"partnerId":1,"scope":"COMMON","sectionCode":"oliva","subtypeCode":"a1","concept":"x","grossAmount":"10.00","plannedDate":"2025-06-15"}]}`,
 	}
 	for name, body := range cases {
