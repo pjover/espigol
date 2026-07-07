@@ -334,7 +334,7 @@ type App struct {
 //	    tui.NewSectionsPanel(deps),
 //	    tui.NewTaxonomyPanel(deps),
 //	    tui.NewForecastsPanel(deps),
-//	    tui.NewReportsPanel(deps),
+//	    tui.NewAdminPanel(deps),
 //	}
 //	app := tui.NewApp(deps, panels)
 func NewApp(deps Deps, panels []Panel) *App {

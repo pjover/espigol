@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/pjover/espigol/internal/adapters/persistence"
+	"github.com/pjover/espigol/internal/adapters/persistence/backup"
 	"github.com/pjover/espigol/internal/adapters/persistence/db"
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
 	appreport "github.com/pjover/espigol/internal/adapters/report"
@@ -20,7 +21,10 @@ import (
 
 const testAdminEmail = "admin@espigol.test"
 
-// pbFixedClock is a deterministic Clock for panel tests.
+// pbFixedClock is a deterministic Clock for panel tests: Now() always
+// returns the same instant. Repeated same-second operations (e.g. backup
+// filenames) are disambiguated inside backup.Backup itself via a numeric
+// suffix, so this clock doesn't need to mutate to avoid collisions.
 type pbFixedClock struct{ t time.Time }
 
 func (c pbFixedClock) Now() time.Time { return c.t }
@@ -30,7 +34,9 @@ func (c pbFixedClock) Now() time.Time { return c.t }
 // service stack rather than fakes.
 func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 	t.Helper()
-	conn, err := db.Open(filepath.Join(t.TempDir(), "panels.db"))
+	home := t.TempDir()
+	dbPath := filepath.Join(home, "panels.db")
+	conn, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +55,15 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 		Windows:   application.NewWindowService(txm, appreport.NoopRenderer{}, clock),
 		Reports:   application.NewReportService(txm),
 		Exporter:  exporter,
-		Cfg:       &config.Config{OutputDir: t.TempDir(), Admin: struct{ Email string }{Email: testAdminEmail}},
+		Backup:    backup.New(conn, dbPath, filepath.Join(home, "backups"), clock),
+		Cfg: &config.Config{
+			Home:      home,
+			DBPath:    dbPath,
+			OutputDir: filepath.Join(home, "reports"),
+			BackupDir: filepath.Join(home, "backups"),
+			ImportDir: filepath.Join(home, "import"),
+			Admin:     struct{ Email string }{Email: testAdminEmail},
+		},
 	}
 	return deps, q
 }

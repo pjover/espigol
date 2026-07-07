@@ -444,9 +444,9 @@ func mustMoneyTUI(t *testing.T, s string) model.Money {
 	return m
 }
 
-// --- Informes panel ---
+// --- Admin panel ---
 
-func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
+func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()
 
@@ -473,13 +473,13 @@ func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := NewReportsPanel(deps)
+	p := NewAdminPanel(deps)
 	p, cmd := p.Update(yearSelectedMsg{Year: 2027})
 	if cmd != nil {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("r"))
+	_, cmd = p.Update(pKey("f"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -511,7 +511,7 @@ func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	}
 }
 
-func TestReportsPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
+func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()
 	seedWindow(t, q, 2026, model.WindowOpen)
@@ -521,13 +521,13 @@ func TestReportsPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T)
 	sa, _ := model.NewExpenseSubtype(2026, "a1", "[a1]", "A")
 	_ = tax.SaveSubtype(ctx, sa)
 
-	p := NewReportsPanel(deps)
+	p := NewAdminPanel(deps)
 	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
 	if cmd != nil {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("r"))
+	_, cmd = p.Update(pKey("f"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -551,5 +551,93 @@ func TestReportsPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T)
 		if _, err := os.Stat(filepath.Join(outputDir, name)); err != nil {
 			t.Errorf("expected %s to exist: %v", name, err)
 		}
+	}
+}
+
+func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
+	deps, q := testDeps(t)
+	ctx := context.Background()
+
+	// Seed an OPEN 2025 year with taxonomy a1 and partner 7.
+	seedWindow(t, q, 2025, model.WindowOpen)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2025, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2025, "a1", "[a1]", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+	p7, _ := model.NewPartner(7, "Soci", "", "", "s7@e.test", "", model.Productor, 0,
+		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	_ = persistence.NewPartnerRepository(q).Save(ctx, p7)
+
+	// Write the import file into Cfg.ImportDir.
+	if err := os.MkdirAll(deps.Cfg.ImportDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"year":2025,"forecasts":[
+	  {"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"Assegurança","grossAmount":"2880.00","plannedDate":"2025-06-15"},
+	  {"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"Segona","grossAmount":"100.00","plannedDate":"2025-07-01"}
+	]}`
+	if err := os.WriteFile(filepath.Join(deps.Cfg.ImportDir, "2025-forecasts.json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(yearSelectedMsg{Year: 2025})
+	_, cmd := p.Update(pKey("i"))
+	msg := runCmd(t, cmd).(forecastsImportedMsg)
+	if msg.err != nil {
+		t.Fatalf("import error: %v", msg.err)
+	}
+	if msg.result.Created != 2 {
+		t.Errorf("Created = %d, want 2", msg.result.Created)
+	}
+	p, _ = p.Update(msg)
+	if got := p.Detail(); !strings.Contains(got, "Importats 2") {
+		t.Errorf("Detail = %q, want it to mention Importats 2", got)
+	}
+}
+
+func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
+	deps, q := testDeps(t)
+	seedWindow(t, q, 2025, model.WindowDraft) // not OPEN
+	if err := os.MkdirAll(deps.Cfg.ImportDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"year":2025,"forecasts":[{"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"1.00","plannedDate":"2025-06-15"}]}`
+	if err := os.WriteFile(filepath.Join(deps.Cfg.ImportDir, "2025-forecasts.json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(yearSelectedMsg{Year: 2025})
+	_, cmd := p.Update(pKey("i"))
+	msg := runCmd(t, cmd).(forecastsImportedMsg)
+	if msg.err == nil {
+		t.Fatal("expected error importing into a non-OPEN year")
+	}
+}
+
+func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
+	deps, _ := testDeps(t) // no backups created
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(pKey("r"))
+	if got := p.Detail(); !strings.Contains(got, "cap còpia") {
+		t.Errorf("Detail = %q, want it to mention 'cap còpia'", got)
+	}
+}
+
+func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
+	deps, _ := testDeps(t)
+	p := NewAdminPanel(deps)
+	_, cmd := p.Update(pKey("b"))
+	msg := runCmd(t, cmd).(backupDoneMsg)
+	if msg.err != nil {
+		t.Fatalf("backup error: %v", msg.err)
+	}
+	if _, err := os.Stat(msg.path); err != nil {
+		t.Fatalf("backup file missing: %v", err)
+	}
+	p, _ = p.Update(msg)
+	if got := p.Detail(); !strings.Contains(got, msg.path) {
+		t.Errorf("Detail = %q, want it to contain the backup path", got)
 	}
 }

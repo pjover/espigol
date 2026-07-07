@@ -7,6 +7,7 @@ import (
 
 	"github.com/pjover/espigol/internal/adapters/auth"
 	"github.com/pjover/espigol/internal/adapters/persistence"
+	"github.com/pjover/espigol/internal/adapters/persistence/backup"
 	"github.com/pjover/espigol/internal/adapters/persistence/db"
 	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
 	reportadapter "github.com/pjover/espigol/internal/adapters/report"
@@ -71,6 +72,7 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		Windows:   application.NewWindowService(txm, pdf, clock),
 		Reports:   application.NewReportService(txm),
 		Exporter:  reportadapter.NewReportExporter(pdf),
+		Backup:    backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
 		Cfg:       cfg,
 	}
 
@@ -80,7 +82,7 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		tui.NewSectionsPanel(deps),
 		tui.NewTaxonomyPanel(deps),
 		tui.NewForecastsPanel(deps),
-		tui.NewReportsPanel(deps),
+		tui.NewAdminPanel(deps),
 	}
 
 	return tui.NewApp(deps, panels), nil
