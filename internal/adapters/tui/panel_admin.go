@@ -56,6 +56,12 @@ type forecastsImportedMsg struct {
 	err    error
 }
 
+// backupDoneMsg carries the outcome of backupCmd.
+type backupDoneMsg struct {
+	path string
+	err  error
+}
+
 // importForecastsCmd loads Home/import/<year>-forecasts.json and replaces the
 // year's forecasts via AdminImport (which requires an OPEN window).
 func importForecastsCmd(deps Deps, year int) tea.Cmd {
@@ -71,6 +77,13 @@ func importForecastsCmd(deps Deps, year int) tea.Cmd {
 		}
 		res, err := deps.Forecasts.AdminImport(context.Background(), adminEmail, year, entries)
 		return forecastsImportedMsg{year: year, result: res, err: err}
+	}
+}
+
+func backupCmd(deps Deps) tea.Cmd {
+	return func() tea.Msg {
+		path, err := deps.Backup.Backup(context.Background())
+		return backupDoneMsg{path: path, err: err}
 	}
 }
 
@@ -171,6 +184,14 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, p.loadYearsCmd()
 
+	case backupDoneMsg:
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else {
+			p.result = &adminResult{text: "Còpia de seguretat creada:\n  " + msg.path}
+		}
+		return p, nil
+
 	case tea.KeyMsg:
 		return p.handleKey(msg)
 	}
@@ -183,6 +204,8 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 		return p, p.findWindowStateCmd(p.year)
 	case "i":
 		return p, importForecastsCmd(p.deps, p.year)
+	case "b":
+		return p, backupCmd(p.deps)
 	}
 	return p, nil
 }
@@ -221,5 +244,6 @@ func (p adminPanel) Actions() []Action {
 	return []Action{
 		{Key: "f", Label: "genera informe"},
 		{Key: "i", Label: "importa previsions"},
+		{Key: "b", Label: "còpia de seguretat"},
 	}
 }

@@ -615,3 +615,20 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 		t.Fatal("expected error importing into a non-OPEN year")
 	}
 }
+
+func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
+	deps, _ := testDeps(t)
+	p := NewAdminPanel(deps)
+	_, cmd := p.Update(pKey("b"))
+	msg := runCmd(t, cmd).(backupDoneMsg)
+	if msg.err != nil {
+		t.Fatalf("backup error: %v", msg.err)
+	}
+	if _, err := os.Stat(msg.path); err != nil {
+		t.Fatalf("backup file missing: %v", err)
+	}
+	p, _ = p.Update(msg)
+	if got := p.Detail(); !strings.Contains(got, msg.path) {
+		t.Errorf("Detail = %q, want it to contain the backup path", got)
+	}
+}
