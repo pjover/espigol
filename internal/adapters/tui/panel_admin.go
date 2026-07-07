@@ -192,6 +192,14 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, nil
 
+	case restoreStagedMsg:
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else {
+			p.result = &adminResult{text: fmt.Sprintf("Restauració preparada: %s\nEs restaurarà en reiniciar l'aplicació.", msg.name)}
+		}
+		return p, nil
+
 	case tea.KeyMsg:
 		return p.handleKey(msg)
 	}
@@ -206,6 +214,17 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 		return p, importForecastsCmd(p.deps, p.year)
 	case "b":
 		return p, backupCmd(p.deps)
+	case "r":
+		files, err := p.deps.Backup.ListBackups()
+		if err != nil {
+			p.result = &adminResult{err: err}
+			return p, nil
+		}
+		if len(files) == 0 {
+			p.result = &adminResult{text: dimStyle.Render("(cap còpia de seguretat)")}
+			return p, nil
+		}
+		return p, openModalCmd(newBackupSelectModal(p.deps, files))
 	}
 	return p, nil
 }
@@ -245,5 +264,6 @@ func (p adminPanel) Actions() []Action {
 		{Key: "f", Label: "genera informe"},
 		{Key: "i", Label: "importa previsions"},
 		{Key: "b", Label: "còpia de seguretat"},
+		{Key: "r", Label: "restaura"},
 	}
 }

@@ -616,6 +616,15 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 	}
 }
 
+func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
+	deps, _ := testDeps(t) // no backups created
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(pKey("r"))
+	if got := p.Detail(); !strings.Contains(got, "cap còpia") {
+		t.Errorf("Detail = %q, want it to mention 'cap còpia'", got)
+	}
+}
+
 func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
 	deps, _ := testDeps(t)
 	p := NewAdminPanel(deps)
