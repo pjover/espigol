@@ -51,13 +51,29 @@ func New(db *sql.DB, dbPath, backupDir string, clock Clock) *Service {
 }
 
 // Backup writes a consistent snapshot to backups/espigol-YYYYMMDD-HHMMSS.db and
-// returns its path.
+// returns its path. If a file already exists at the computed destination (same-second
+// collision), it appends a numeric suffix (e.g., -2.db, -3.db) until a free path is found.
 func (s *Service) Backup(ctx context.Context) (string, error) {
 	if err := os.MkdirAll(s.backupDir, 0o700); err != nil {
 		return "", fmt.Errorf("creating backup dir: %w", err)
 	}
 	name := fmt.Sprintf("espigol-%s.db", s.clock.Now().Format("20060102-150405"))
 	dest := filepath.Join(s.backupDir, name)
+
+	// Disambiguate if a file already exists at dest (same-second collision safety).
+	if _, err := os.Stat(dest); err == nil {
+		// File exists; find a free path by appending numeric suffix.
+		base := strings.TrimSuffix(name, ".db")
+		for i := 2; i < 1000; i++ {
+			candidateName := fmt.Sprintf("%s-%d.db", base, i)
+			candidate := filepath.Join(s.backupDir, candidateName)
+			if _, err := os.Stat(candidate); err != nil && os.IsNotExist(err) {
+				dest = candidate
+				break
+			}
+		}
+	}
+
 	// VACUUM INTO takes a SQL string literal for the destination path.
 	if _, err := s.db.ExecContext(ctx, "VACUUM INTO "+sqlQuote(dest)); err != nil {
 		return "", fmt.Errorf("vacuum into %s: %w", dest, err)

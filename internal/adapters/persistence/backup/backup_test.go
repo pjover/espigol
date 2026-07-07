@@ -90,3 +90,31 @@ func TestStageRestore_WritesPendingAndSafetyBackup(t *testing.T) {
 		t.Error("expected a safety backup to be created before staging")
 	}
 }
+
+func TestBackup_SameSecondCollisionSafety(t *testing.T) {
+	svc, _, _ := newSvc(t)
+
+	// Call Backup twice with the same fixed clock time (same-second collision scenario).
+	path1, err := svc.Backup(context.Background())
+	if err != nil {
+		t.Fatalf("first Backup: %v", err)
+	}
+
+	path2, err := svc.Backup(context.Background())
+	if err != nil {
+		t.Fatalf("second Backup: %v", err)
+	}
+
+	// Both calls should have succeeded and returned different paths.
+	if path1 == path2 {
+		t.Errorf("backup paths are identical: %q", path1)
+	}
+
+	// Both files should exist on disk.
+	if _, err := os.Stat(path1); err != nil {
+		t.Errorf("first backup file missing: %v", err)
+	}
+	if _, err := os.Stat(path2); err != nil {
+		t.Errorf("second backup file missing: %v", err)
+	}
+}
