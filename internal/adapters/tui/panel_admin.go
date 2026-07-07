@@ -11,12 +11,11 @@ import (
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
-// reportsPanel is the "Informes" panel: generates the report for the
-// year-context (CLOSED -> stored Report export, DRAFT/OPEN -> live preview
-// export) via the shared generateReportCmd helper (report_action.go,
-// implemented in Task 11) and shows the resulting written paths or error.
-// It also shows which years currently have a stored Report, for context.
-type reportsPanel struct {
+// adminPanel is the "Admin" panel (formerly "Informes"). It operates on the
+// selected-year context and offers: f generate report, i import forecasts,
+// b backup the database, r restore it. It also lists which years have a stored
+// Report, for context.
+type adminPanel struct {
 	deps  Deps
 	year  int
 	state model.WindowState
@@ -24,24 +23,30 @@ type reportsPanel struct {
 	years    []int // years with a stored report, ascending
 	yearsErr error // error from loading the years-with-reports list
 
-	lastResult *reportDoneMsg
+	result *adminResult
 }
 
-// NewReportsPanel builds the Informes panel.
-func NewReportsPanel(deps Deps) Panel {
-	return reportsPanel{deps: deps}
+// adminResult holds the outcome of the last f/i/b/r action, rendered by Detail.
+type adminResult struct {
+	text string
+	err  error
 }
 
-func (p reportsPanel) Title() string { return "Informes" }
+// NewAdminPanel builds the Admin panel.
+func NewAdminPanel(deps Deps) Panel {
+	return adminPanel{deps: deps}
+}
 
-// reportYearsLoadedMsg carries the result of listing which years have a
-// stored Report (used only for the optional "years with reports" list).
+func (p adminPanel) Title() string { return "Admin" }
+
+// reportYearsLoadedMsg carries the result of listing which years have a stored
+// Report (used only for the "years with reports" context list).
 type reportYearsLoadedMsg struct {
 	years []int
 	err   error
 }
 
-func (p reportsPanel) loadYearsCmd() tea.Cmd {
+func (p adminPanel) loadYearsCmd() tea.Cmd {
 	return func() tea.Msg {
 		windows, err := p.deps.Windows.List(context.Background())
 		if err != nil {
@@ -60,10 +65,9 @@ func (p reportsPanel) loadYearsCmd() tea.Cmd {
 	}
 }
 
-// findWindowStateCmd resolves the year-context's current window state (so
-// "r" knows whether to use Export or ExportData) without keeping the whole
-// window list around.
-func (p reportsPanel) findWindowStateCmd(year int) tea.Cmd {
+// findWindowStateCmd resolves the selected year's window state so the report
+// action knows whether to Export (CLOSED) or ExportData (DRAFT/OPEN).
+func (p adminPanel) findWindowStateCmd(year int) tea.Cmd {
 	return func() tea.Msg {
 		windows, err := p.deps.Windows.List(context.Background())
 		if err != nil {
@@ -78,15 +82,15 @@ func (p reportsPanel) findWindowStateCmd(year int) tea.Cmd {
 	}
 }
 
-// windowStateMsg carries the year-context window's state, fetched before
-// generating the report so generateReportCmd knows CLOSED vs. DRAFT/OPEN.
+// windowStateMsg carries the selected year's window state, fetched before
+// generating the report.
 type windowStateMsg struct {
 	year  int
 	state model.WindowState
 	found bool
 }
 
-func (p reportsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
+func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case panelInitMsg:
 		return p, p.loadYearsCmd()
@@ -109,7 +113,7 @@ func (p reportsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 			return p, nil
 		}
 		if !msg.found {
-			p.lastResult = &reportDoneMsg{year: p.year, err: fmt.Errorf("cap any %d trobat", p.year)}
+			p.result = &adminResult{err: fmt.Errorf("cap any %d trobat", p.year)}
 			return p, nil
 		}
 		p.state = msg.state
@@ -119,8 +123,13 @@ func (p reportsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		if msg.year != p.year {
 			return p, nil
 		}
-		result := msg
-		p.lastResult = &result
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else if len(msg.paths) == 0 {
+			p.result = &adminResult{text: "Informe generat (cap fitxer)."}
+		} else {
+			p.result = &adminResult{text: "Informe generat:\n  " + strings.Join(msg.paths, "\n  ")}
+		}
 		return p, p.loadYearsCmd()
 
 	case tea.KeyMsg:
@@ -129,15 +138,15 @@ func (p reportsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 	return p, nil
 }
 
-func (p reportsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
+func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
-	case "r":
+	case "f":
 		return p, p.findWindowStateCmd(p.year)
 	}
 	return p, nil
 }
 
-func (p reportsPanel) View(width, height int) string {
+func (p adminPanel) View(width, height int) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Any seleccionat: %d\n\n", p.year))
 
@@ -154,24 +163,21 @@ func (p reportsPanel) View(width, height int) string {
 	return b.String()
 }
 
-func (p reportsPanel) Detail() string {
+func (p adminPanel) Detail() string {
+	if p.result != nil {
+		if p.result.err != nil {
+			return errDetail(p.result.err)
+		}
+		return p.result.text
+	}
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	if p.lastResult == nil {
-		return dimStyle.Render("Prem 'r' per generar l'informe de l'any seleccionat.")
-	}
-	if p.lastResult.err != nil {
-		return errDetail(p.lastResult.err)
-	}
-	if len(p.lastResult.paths) == 0 {
-		return dimStyle.Render("Informe generat (cap fitxer).")
-	}
-	return "Informe generat:\n  " + strings.Join(p.lastResult.paths, "\n  ")
+	return dimStyle.Render("f: informe · i: importa · b: còpia · r: restaura")
 }
 
-func (p reportsPanel) Actions() []Action {
+func (p adminPanel) Actions() []Action {
 	return []Action{
-		{Key: "r", Label: "genera informe"},
+		{Key: "f", Label: "genera informe"},
 	}
 }

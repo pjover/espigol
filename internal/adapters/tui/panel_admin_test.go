@@ -444,9 +444,9 @@ func mustMoneyTUI(t *testing.T, s string) model.Money {
 	return m
 }
 
-// --- Informes panel ---
+// --- Admin panel ---
 
-func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
+func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()
 
@@ -473,13 +473,13 @@ func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := NewReportsPanel(deps)
+	p := NewAdminPanel(deps)
 	p, cmd := p.Update(yearSelectedMsg{Year: 2027})
 	if cmd != nil {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("r"))
+	_, cmd = p.Update(pKey("f"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -511,7 +511,7 @@ func TestReportsPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	}
 }
 
-func TestReportsPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
+func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()
 	seedWindow(t, q, 2026, model.WindowOpen)
@@ -521,13 +521,13 @@ func TestReportsPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T)
 	sa, _ := model.NewExpenseSubtype(2026, "a1", "[a1]", "A")
 	_ = tax.SaveSubtype(ctx, sa)
 
-	p := NewReportsPanel(deps)
+	p := NewAdminPanel(deps)
 	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
 	if cmd != nil {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("r"))
+	_, cmd = p.Update(pKey("f"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {

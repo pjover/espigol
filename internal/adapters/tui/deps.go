@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/pjover/espigol/internal/adapters/persistence/backup"
 	"github.com/pjover/espigol/internal/adapters/report"
 	"github.com/pjover/espigol/internal/application"
 	"github.com/pjover/espigol/internal/config"
@@ -19,5 +20,6 @@ type Deps struct {
 	Windows   *application.WindowService
 	Reports   *application.ReportService
 	Exporter  report.ReportExporter
+	Backup    backup.Backuper
 	Cfg       *config.Config
 }
