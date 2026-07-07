@@ -3,11 +3,14 @@ package tui
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/pjover/espigol/internal/adapters/importer"
+	"github.com/pjover/espigol/internal/application"
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
@@ -44,6 +47,31 @@ func (p adminPanel) Title() string { return "Admin" }
 type reportYearsLoadedMsg struct {
 	years []int
 	err   error
+}
+
+// forecastsImportedMsg carries the outcome of importForecastsCmd.
+type forecastsImportedMsg struct {
+	year   int
+	result application.ImportResult
+	err    error
+}
+
+// importForecastsCmd loads Home/import/<year>-forecasts.json and replaces the
+// year's forecasts via AdminImport (which requires an OPEN window).
+func importForecastsCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		path := filepath.Join(deps.Cfg.ImportDir, fmt.Sprintf("%d-forecasts.json", year))
+		entries, err := importer.Load(path, year)
+		if err != nil {
+			return forecastsImportedMsg{year: year, err: err}
+		}
+		adminEmail := ""
+		if deps.Cfg != nil {
+			adminEmail = deps.Cfg.Admin.Email
+		}
+		res, err := deps.Forecasts.AdminImport(context.Background(), adminEmail, year, entries)
+		return forecastsImportedMsg{year: year, result: res, err: err}
+	}
 }
 
 func (p adminPanel) loadYearsCmd() tea.Cmd {
@@ -132,6 +160,17 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, p.loadYearsCmd()
 
+	case forecastsImportedMsg:
+		if msg.year != p.year {
+			return p, nil
+		}
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else {
+			p.result = &adminResult{text: fmt.Sprintf("Importats %d (esborrats %d)", msg.result.Created, msg.result.Deleted)}
+		}
+		return p, p.loadYearsCmd()
+
 	case tea.KeyMsg:
 		return p.handleKey(msg)
 	}
@@ -142,6 +181,8 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
 	case "f":
 		return p, p.findWindowStateCmd(p.year)
+	case "i":
+		return p, importForecastsCmd(p.deps, p.year)
 	}
 	return p, nil
 }
@@ -179,5 +220,6 @@ func (p adminPanel) Detail() string {
 func (p adminPanel) Actions() []Action {
 	return []Action{
 		{Key: "f", Label: "genera informe"},
+		{Key: "i", Label: "importa previsions"},
 	}
 }

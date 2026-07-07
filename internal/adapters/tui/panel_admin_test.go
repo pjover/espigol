@@ -553,3 +553,65 @@ func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
+	deps, q := testDeps(t)
+	ctx := context.Background()
+
+	// Seed an OPEN 2025 year with taxonomy a1 and partner 7.
+	seedWindow(t, q, 2025, model.WindowOpen)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2025, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2025, "a1", "[a1]", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+	p7, _ := model.NewPartner(7, "Soci", "", "", "s7@e.test", "", model.Productor, 0,
+		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	_ = persistence.NewPartnerRepository(q).Save(ctx, p7)
+
+	// Write the import file into Cfg.ImportDir.
+	if err := os.MkdirAll(deps.Cfg.ImportDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"year":2025,"forecasts":[
+	  {"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"Assegurança","grossAmount":"2880.00","plannedDate":"2025-06-15"},
+	  {"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"Segona","grossAmount":"100.00","plannedDate":"2025-07-01"}
+	]}`
+	if err := os.WriteFile(filepath.Join(deps.Cfg.ImportDir, "2025-forecasts.json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(yearSelectedMsg{Year: 2025})
+	_, cmd := p.Update(pKey("i"))
+	msg := runCmd(t, cmd).(forecastsImportedMsg)
+	if msg.err != nil {
+		t.Fatalf("import error: %v", msg.err)
+	}
+	if msg.result.Created != 2 {
+		t.Errorf("Created = %d, want 2", msg.result.Created)
+	}
+	p, _ = p.Update(msg)
+	if got := p.Detail(); !strings.Contains(got, "Importats 2") {
+		t.Errorf("Detail = %q, want it to mention Importats 2", got)
+	}
+}
+
+func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
+	deps, q := testDeps(t)
+	seedWindow(t, q, 2025, model.WindowDraft) // not OPEN
+	if err := os.MkdirAll(deps.Cfg.ImportDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"year":2025,"forecasts":[{"partnerId":7,"scope":"COMMON","subtypeCode":"a1","concept":"x","grossAmount":"1.00","plannedDate":"2025-06-15"}]}`
+	if err := os.WriteFile(filepath.Join(deps.Cfg.ImportDir, "2025-forecasts.json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p := NewAdminPanel(deps)
+	p, _ = p.Update(yearSelectedMsg{Year: 2025})
+	_, cmd := p.Update(pKey("i"))
+	msg := runCmd(t, cmd).(forecastsImportedMsg)
+	if msg.err == nil {
+		t.Fatal("expected error importing into a non-OPEN year")
+	}
+}
