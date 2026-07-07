@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pjover/espigol/internal/adapters/persistence"
 	"github.com/pjover/espigol/internal/adapters/persistence/backup"
 	"github.com/pjover/espigol/internal/adapters/persistence/db"
+	"github.com/pjover/espigol/internal/adapters/persistence/sqlc"
+	"github.com/pjover/espigol/internal/domain/model"
 )
 
 type fakeClock struct{ t time.Time }
@@ -29,8 +32,49 @@ func newSvc(t *testing.T) (*backup.Service, string, string) {
 	return svc, dbPath, backupDir
 }
 
+// seedSection inserts a single section row into the database at dbPath using
+// a fresh connection, so callers don't need to plumb a live *sql.DB through
+// the backup.Service (which keeps its connection private).
+func seedSection(t *testing.T, dbPath, code, label string) {
+	t.Helper()
+	conn, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening %s to seed: %v", dbPath, err)
+	}
+	defer conn.Close()
+	sec, err := model.NewSection(code, label, true, 1)
+	if err != nil {
+		t.Fatalf("NewSection: %v", err)
+	}
+	if err := persistence.NewSectionRepository(sqlc.New(conn)).Save(context.Background(), sec); err != nil {
+		t.Fatalf("saving section: %v", err)
+	}
+}
+
+// readSectionLabels opens dbPath and returns the label of every section
+// present, keyed by code.
+func readSectionLabels(t *testing.T, dbPath string) map[string]string {
+	t.Helper()
+	conn, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening %s to read: %v", dbPath, err)
+	}
+	defer conn.Close()
+	secs, err := persistence.NewSectionRepository(sqlc.New(conn)).List(context.Background())
+	if err != nil {
+		t.Fatalf("listing sections in %s: %v", dbPath, err)
+	}
+	out := make(map[string]string, len(secs))
+	for _, s := range secs {
+		out[s.Code()] = s.Label()
+	}
+	return out
+}
+
 func TestBackup_ProducesOpenableCopy(t *testing.T) {
-	svc, _, backupDir := newSvc(t)
+	svc, dbPath, backupDir := newSvc(t)
+	seedSection(t, dbPath, "oliva", "Secció d'oliva")
+
 	path, err := svc.Backup(context.Background())
 	if err != nil {
 		t.Fatalf("Backup: %v", err)
@@ -47,6 +91,52 @@ func TestBackup_ProducesOpenableCopy(t *testing.T) {
 		t.Fatalf("opening backup copy: %v", err)
 	}
 	conn.Close()
+
+	// The copy must contain the seeded row's content, not just be openable.
+	labels := readSectionLabels(t, path)
+	if got, want := labels["oliva"], "Secció d'oliva"; got != want {
+		t.Errorf("backup copy section label = %q, want %q", got, want)
+	}
+}
+
+// TestRestoreRoundTrip_DataSurvives proves that the full backup -> restore
+// cycle preserves DB content: a row present when the backup was taken (state
+// X) survives being restored over a database that was later mutated away
+// from X.
+func TestRestoreRoundTrip_DataSurvives(t *testing.T) {
+	svc, dbPath, _ := newSvc(t)
+
+	// State X: the row that must survive the round trip.
+	seedSection(t, dbPath, "oliva", "Secció d'oliva (state X)")
+
+	path, err := svc.Backup(context.Background())
+	if err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+
+	// The backup copy must actually contain state X's content.
+	backedUp := readSectionLabels(t, path)
+	if got, want := backedUp["oliva"], "Secció d'oliva (state X)"; got != want {
+		t.Fatalf("backup copy section label = %q, want %q", got, want)
+	}
+
+	// Mutate the live DB away from state X.
+	seedSection(t, dbPath, "ramaderia", "Secció de ramaderia (post-backup mutation)")
+
+	if err := svc.StageRestore(path); err != nil {
+		t.Fatalf("StageRestore: %v", err)
+	}
+	if err := db.ApplyPendingRestore(dbPath); err != nil {
+		t.Fatalf("ApplyPendingRestore: %v", err)
+	}
+
+	restored := readSectionLabels(t, dbPath)
+	if got, want := restored["oliva"], "Secció d'oliva (state X)"; got != want {
+		t.Errorf("restored section label = %q, want %q (state X must survive)", got, want)
+	}
+	if _, present := restored["ramaderia"]; present {
+		t.Error("restored DB still has the post-backup mutation; restore should have reverted it")
+	}
 }
 
 func TestListBackups_NewestFirst(t *testing.T) {

@@ -50,11 +50,19 @@ func migrate(conn *sql.DB) error {
 }
 
 // ApplyPendingRestore swaps a staged restore into place before the database is
-// opened. If <dir>/restore-pending.db exists it replaces the database file,
-// removes the stale -wal/-shm sidecars (which belong to the old database), and
-// deletes the marker. It is a no-op when no restore is pending. Running here,
-// the single open choke point, means both the TUI and --server apply a
+// opened. If <dir>/restore-pending.db exists it removes the stale -wal/-shm
+// sidecars (which belong to the old database) first, then replaces the
+// database file, and finally deletes the marker. Removing the sidecars before
+// the rename means a crash mid-operation leaves the pending marker in place,
+// so the next Open retries cleanly instead of leaving stale WAL frames beside
+// a freshly restored file. It is a no-op when no restore is pending. Running
+// here, the single open choke point, means both the TUI and --server apply a
 // pending restore on their next start.
+//
+// Applying a pending restore rewrites the database file in place and is safe
+// only when no OTHER espigol process (notably `espigol --server`) currently
+// has the database open. A restore should be staged, and the machine or any
+// other espigol processes stopped, before the next launch performs the swap.
 func ApplyPendingRestore(dbPath string) error {
 	pending := filepath.Join(filepath.Dir(dbPath), "restore-pending.db")
 	if _, err := os.Stat(pending); err != nil {
@@ -63,13 +71,13 @@ func ApplyPendingRestore(dbPath string) error {
 		}
 		return fmt.Errorf("checking pending restore: %w", err)
 	}
-	if err := os.Rename(pending, dbPath); err != nil {
-		return fmt.Errorf("applying pending restore: %w", err)
-	}
 	for _, sidecar := range []string{dbPath + "-wal", dbPath + "-shm"} {
 		if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("removing %s: %w", sidecar, err)
 		}
+	}
+	if err := os.Rename(pending, dbPath); err != nil {
+		return fmt.Errorf("applying pending restore: %w", err)
 	}
 	return nil
 }

@@ -21,17 +21,13 @@ import (
 
 const testAdminEmail = "admin@espigol.test"
 
-// pbFixedClock is a deterministic Clock for panel tests. It advances by one
-// second on every call so that repeated same-test operations relying on
-// second-granularity timestamps (e.g. backup filenames) don't collide, while
-// staying fully deterministic across runs.
+// pbFixedClock is a deterministic Clock for panel tests: Now() always
+// returns the same instant. Repeated same-second operations (e.g. backup
+// filenames) are disambiguated inside backup.Backup itself via a numeric
+// suffix, so this clock doesn't need to mutate to avoid collisions.
 type pbFixedClock struct{ t time.Time }
 
-func (c *pbFixedClock) Now() time.Time {
-	now := c.t
-	c.t = c.t.Add(time.Second)
-	return now
-}
+func (c pbFixedClock) Now() time.Time { return c.t }
 
 // testDeps builds a full Deps over a temp DB with real application services,
 // mirroring wire.Server/wire.TUI's assembly so the panels exercise the real
@@ -47,7 +43,7 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 	t.Cleanup(func() { conn.Close() })
 	q := sqlc.New(conn)
 	txm := persistence.NewTxManager(conn)
-	clock := &pbFixedClock{t: time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)}
+	clock := pbFixedClock{t: time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)}
 
 	exporter := appreport.NewReportExporter(appreport.PDFRenderer{BusinessName: "Test"})
 
