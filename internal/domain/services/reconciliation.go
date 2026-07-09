@@ -5,6 +5,7 @@
 package services
 
 import (
+	"sort"
 	"time"
 
 	"github.com/pjover/espigol/internal/domain/model"
@@ -105,4 +106,94 @@ const (
 // described by the Phase 2 spec. Skeleton in Task 1; filled in Tasks 2-5.
 func ComputeReconciliation(in ReconciliationInput) (ReconciliationData, error) {
 	return ReconciliationData{Year: in.Year}, nil
+}
+
+// forecastExec bundles the per-forecast paid/pending totals with the list of
+// invoice contributions (paid AND unpaid). It's the shared intermediate the
+// downstream stages of ComputeReconciliation consume.
+type forecastExec struct {
+	Executed model.Money
+	Pending  model.Money
+	Invoices []InvoiceContribution
+}
+
+// executedAndPending walks the year's invoices and produces per-forecast
+// paid/pending totals + audit contributions. Invoices are classified as
+// fully paid iff Σ payments ≥ netAmount − 0.01. Enabled==false forecasts are
+// skipped: their forecastExec is not populated (they don't appear in the map).
+func executedAndPending(in ReconciliationInput) map[string]forecastExec {
+	// Set of enabled forecast IDs (unknown IDs are ignored — data hygiene is
+	// Phase 1's job; here we just don't produce output rows for them).
+	enabled := make(map[string]bool, len(in.Forecasts))
+	for _, f := range in.Forecasts {
+		if f.Enabled() {
+			enabled[f.ID()] = true
+		}
+	}
+	out := make(map[string]forecastExec, len(enabled))
+	for id := range enabled {
+		out[id] = forecastExec{Executed: model.ZeroMoney(), Pending: model.ZeroMoney()}
+	}
+
+	for _, inv := range in.Invoices {
+		paidTotal := inv.PaidTotal()
+		fullyPaid := invoiceFullyPaid(paidTotal, inv.NetAmount())
+		paidOn := latestPaidOn(inv, fullyPaid)
+		for _, link := range inv.Links() {
+			id := link.ForecastID()
+			if !enabled[id] {
+				continue
+			}
+			cur := out[id]
+			contrib := InvoiceContribution{
+				InvoiceID:    inv.ID(),
+				Issuer:       inv.Issuer(),
+				Number:       inv.Number(),
+				IssueDate:    inv.IssueDate(),
+				LinkedAmount: link.Amount(),
+				FullyPaid:    fullyPaid,
+				PaidOn:       paidOn,
+			}
+			if fullyPaid {
+				cur.Executed = cur.Executed.Plus(link.Amount())
+			} else {
+				cur.Pending = cur.Pending.Plus(link.Amount())
+			}
+			cur.Invoices = append(cur.Invoices, contrib)
+			out[id] = cur
+		}
+	}
+	// Deterministic ordering for each forecast's invoice list.
+	for id, fx := range out {
+		sort.Slice(fx.Invoices, func(i, j int) bool {
+			if !fx.Invoices[i].IssueDate.Equal(fx.Invoices[j].IssueDate) {
+				return fx.Invoices[i].IssueDate.Before(fx.Invoices[j].IssueDate)
+			}
+			return fx.Invoices[i].Number < fx.Invoices[j].Number
+		})
+		out[id] = fx
+	}
+	return out
+}
+
+// invoiceFullyPaid = Σ payments ≥ netAmount − 0.01 (all-or-nothing rule).
+func invoiceFullyPaid(paidTotal, netAmount model.Money) bool {
+	// paidTotal ≥ netAmount − 0.01  ⇔  paidTotal + 0.01 ≥ netAmount
+	// Using cent-level compare via Money.Cmp.
+	oneCent, _ := model.MoneyFromString("0.01")
+	return paidTotal.Plus(oneCent).Cmp(netAmount) >= 0
+}
+
+// latestPaidOn returns the latest payment date if fully paid, else nil.
+func latestPaidOn(inv model.Invoice, fullyPaid bool) *time.Time {
+	if !fullyPaid || len(inv.Payments()) == 0 {
+		return nil
+	}
+	latest := inv.Payments()[0].PaidOn()
+	for _, p := range inv.Payments()[1:] {
+		if p.PaidOn().After(latest) {
+			latest = p.PaidOn()
+		}
+	}
+	return &latest
 }
