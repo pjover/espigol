@@ -41,6 +41,83 @@ forecasts start unapproved.
 }
 ```
 
+### Subsidy reconciliation (Ajuts)
+
+The `[5] Ajuts` panel manages concession requests and invoice reconciliation for the selected year. The panel
+operates in two views (toggled by `tab`): **Concessions** (subsidy requests grouped by partner/activity) and
+**Factures** (invoices linked to those concessions). All reconciliation data can be imported, created, edited,
+and deleted without any window-state gate, independent of the forecast submission process.
+
+Available keys:
+
+- `tab` — toggle between Concessions and Factures views.
+- `i` — import reconciliation data from a JSON file (see below).
+- `n` — create a new concession or invoice (depends on active view).
+- `e` — edit the selected concession or invoice.
+- `d` — delete the selected concession or invoice.
+
+#### Importing reconciliation data
+
+`i` reads `~/.config/espigol/import/reconciliation-<year>.json` (e.g. `reconciliation-2025.json` for 2025).
+The import is **replace-all**: every existing concession and invoice for that year is deleted and replaced by
+the file's contents. All referenced forecast IDs (`forecastIds`) and subtypes (`subtypeCode`) must already
+exist for the year, or the whole import is rejected and nothing changes.
+
+Each concession groups a subsidy request with linked forecasts. Amounts are decimal strings. Linked forecasts
+are comma-separated (`CP25008,CP25009`). Each invoice may have multiple payments (date-amount pairs) and links
+to forecasts (forecast-ID + assigned amount pairs).
+
+```json
+{
+  "year": 2025,
+  "concessions": [
+    {
+      "groupCode": "A6-02",
+      "subtypeCode": "a6",
+      "concept": "Adob orgànic",
+      "requestedTotal": "13880.00",
+      "grantedAmount": "13880.00",
+      "forecastIds": ["CP25008", "CP25009"]
+    }
+  ],
+  "invoices": [
+    {
+      "issuer": "Jardines Campaner",
+      "nif": "B12345678",
+      "number": "F878",
+      "issueDate": "2025-03-14",
+      "netAmount": "1234.56",
+      "filePath": "f878.pdf",
+      "notes": "Varies màquines",
+      "payments": [
+        { "paidOn": "2025-04-01", "amount": "1234.56" }
+      ],
+      "links": [
+        { "forecastId": "CP25008", "amount": "500.00" },
+        { "forecastId": "CP25009", "amount": "734.56" }
+      ]
+    }
+  ]
+}
+```
+
+#### TUI form conventions
+
+When creating or editing concessions and invoices via `n` and `e`:
+
+- **Previsions** (concession forecasts) — comma-separated CP-IDs (`CP25008,CP25009`).
+- **Pagaments** (invoice payments) — semicolon-separated date-amount pairs (`2025-04-01:500.00;2025-04-15:734.56`).
+- **Enllaços** (invoice forecast links) — semicolon-separated forecast-ID–amount pairs (`CP25008:500.00;CP25009:734.56`).
+
+All amounts use decimal notation (e.g. `1234.56`).
+
+#### Current scope
+
+This is **Phase 1** of the subsidy reconciliation feature. It manages concession and invoice data entry only.
+The assignment algorithm (computing actual subsidies per forecast) and final report generation are planned for
+later phases. Soft validation checks (e.g. payment sums, linked forecast totals) are shown as warnings during
+import but do not reject the import.
+
 ## Deployment
 
 `make dist` cross-compiles static, CGO-free binaries for `linux/amd64`, `linux/arm64`,
