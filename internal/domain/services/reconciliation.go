@@ -106,7 +106,153 @@ const (
 // concessions, invoices, taxonomy, and partners, it returns the snapshot tree
 // described by the Phase 2 spec. Skeleton in Task 1; filled in Tasks 2-5.
 func ComputeReconciliation(in ReconciliationInput) (ReconciliationData, error) {
-	return ReconciliationData{Year: in.Year}, nil
+	// Stage 1: paid vs pending per forecast, and their invoice contributions.
+	exec := executedAndPending(in)
+
+	// Stage 2: per-group Base cap + per-forecast Assigned proration.
+	groups, assigned := assignForGroups(in, exec)
+
+	// Lookups.
+	forecastByID := make(map[string]model.ExpenseForecast, len(in.Forecasts))
+	for _, f := range in.Forecasts {
+		if f.Enabled() {
+			forecastByID[f.ID()] = f
+		}
+	}
+	partnerIDForForecast := make(map[string]int, len(in.Forecasts))
+	for _, f := range in.Forecasts {
+		// ExpenseForecast exposes the partner via Partner(), not PartnerID().
+		partnerIDForForecast[f.ID()] = f.Partner().ID()
+	}
+	subtypeCategory := make(map[string]model.ExpenseCategory, len(in.Subtypes))
+	typeCategory := make(map[string]model.ExpenseCategory, len(in.Types))
+	for _, tp := range in.Types {
+		typeCategory[tp.Code()] = tp.Category()
+	}
+	for _, st := range in.Subtypes {
+		subtypeCategory[st.Code()] = typeCategory[st.TypeCode()]
+	}
+
+	// Build ConcessionReconciliation for each Concessió (only if it has
+	// enabled forecasts).
+	concessionsBySubtype := make(map[string][]ConcessionReconciliation, len(in.Concessions))
+	for _, c := range in.Concessions {
+		g := groups[c.GroupCode()]
+		forecastRecs := forecastsForGroup(c.GroupCode(), in.Links, forecastByID, exec, assigned, partnerIDForForecast, g)
+		if len(forecastRecs) == 0 {
+			continue // no enabled forecasts in this group → skip
+		}
+		diff := c.GrantedAmount().Minus(g.Executed)
+		concessionsBySubtype[c.SubtypeCode()] = append(concessionsBySubtype[c.SubtypeCode()], ConcessionReconciliation{
+			GroupCode:  c.GroupCode(),
+			Concept:    c.Concept(),
+			Requested:  c.RequestedTotal(),
+			Granted:    c.GrantedAmount(),
+			Executed:   g.Executed,
+			Assigned:   g.Assigned,
+			Difference: diff,
+			Forecasts:  forecastRecs,
+		})
+	}
+
+	// Roll up concessions → subtypes.
+	subtypesByCategory := make(map[model.ExpenseCategory][]SubtypeReconciliation, 2)
+	for _, st := range in.Subtypes {
+		concs := concessionsBySubtype[st.Code()]
+		if len(concs) == 0 {
+			continue
+		}
+		sort.Slice(concs, func(i, j int) bool { return concs[i].GroupCode < concs[j].GroupCode })
+
+		var req, gr, ex, as model.Money = model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney()
+		for _, cn := range concs {
+			req = req.Plus(cn.Requested)
+			gr = gr.Plus(cn.Granted)
+			ex = ex.Plus(cn.Executed)
+			as = as.Plus(cn.Assigned)
+		}
+		dev := gr.Minus(ex)
+		cat := subtypeCategory[st.Code()]
+		subtypesByCategory[cat] = append(subtypesByCategory[cat], SubtypeReconciliation{
+			Code:        st.Code(),
+			Label:       st.Label(),
+			Requested:   req,
+			Granted:     gr,
+			Executed:    ex,
+			Assigned:    as,
+			Deviation:   dev,
+			Concessions: concs,
+		})
+	}
+
+	// Roll up subtypes → categories, in CURRENT-then-INVESTMENT order.
+	order := []model.ExpenseCategory{model.CategoryCurrent, model.CategoryInvestment}
+	out := ReconciliationData{Year: in.Year}
+	for _, cat := range order {
+		subs := subtypesByCategory[cat]
+		if len(subs) == 0 {
+			continue
+		}
+		sort.Slice(subs, func(i, j int) bool { return subs[i].Code < subs[j].Code })
+
+		var req, gr, ex, as, netDev model.Money = model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney()
+		for _, s := range subs {
+			req = req.Plus(s.Requested)
+			gr = gr.Plus(s.Granted)
+			ex = ex.Plus(s.Executed)
+			as = as.Plus(s.Assigned)
+			netDev = netDev.Plus(s.Deviation)
+		}
+		out.Categories = append(out.Categories, CategoryReconciliation{
+			Category:     cat,
+			Requested:    req,
+			Granted:      gr,
+			Executed:     ex,
+			Assigned:     as,
+			NetDeviation: netDev,
+			Subtypes:     subs,
+		})
+	}
+	return out, nil
+}
+
+// forecastsForGroup builds the sorted ForecastReconciliation slice for one
+// Concessió, only including forecasts that are enabled and have a forecastExec
+// entry.
+func forecastsForGroup(
+	groupCode string,
+	links []model.ConcessionForecast,
+	forecastByID map[string]model.ExpenseForecast,
+	exec map[string]forecastExec,
+	assigned map[string]model.Money,
+	partnerIDForForecast map[string]int,
+	g groupResult,
+) []ForecastReconciliation {
+	var out []ForecastReconciliation
+	for _, l := range links {
+		if l.GroupCode() != groupCode {
+			continue
+		}
+		f, ok := forecastByID[l.ForecastID()]
+		if !ok {
+			continue // disabled or unknown
+		}
+		fx := exec[f.ID()]
+		out = append(out, ForecastReconciliation{
+			ForecastID:     f.ID(),
+			PartnerID:      partnerIDForForecast[f.ID()],
+			Concept:        f.Concept(),
+			GrossAmount:    f.GrossAmount(),
+			ApprovedAmount: f.ApprovedAmount(),
+			Executed:       fx.Executed,
+			Pending:        fx.Pending,
+			Assigned:       assigned[f.ID()],
+			Status:         statusFor(f, fx, g, true),
+			Invoices:       fx.Invoices,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ForecastID < out[j].ForecastID })
+	return out
 }
 
 // forecastExec bundles the per-forecast paid/pending totals with the list of

@@ -269,3 +269,124 @@ func TestReconciliation_Status_FullyJustified(t *testing.T) {
 		t.Errorf("status = %v, want StatusFullyJustified", got)
 	}
 }
+
+// helpers to build taxonomy + partners for hierarchy tests
+func taxTypesAndSubtypes(t *testing.T) ([]model.ExpenseType, []model.ExpenseSubtype) {
+	t.Helper()
+	tCurrent, _ := model.NewExpenseType(2025, "A", "Corrents", model.CategoryCurrent)
+	tInvest, _ := model.NewExpenseType(2025, "B", "Inversió", model.CategoryInvestment)
+	a2, _ := model.NewExpenseSubtype(2025, "a2", "Prom.", "A")
+	a4, _ := model.NewExpenseSubtype(2025, "a4", "Preven.", "A")
+	a6, _ := model.NewExpenseSubtype(2025, "a6", "Fert.", "A")
+	b1, _ := model.NewExpenseSubtype(2025, "b1", "Maquin.", "B")
+	b2, _ := model.NewExpenseSubtype(2025, "b2", "Etno.", "B")
+	return []model.ExpenseType{tCurrent, tInvest}, []model.ExpenseSubtype{a2, a4, a6, b1, b2}
+}
+
+func TestReconciliation_Hierarchy_EmptyCategoryOmitted(t *testing.T) {
+	// Only INVESTMENT concessions → output has 1 category
+	f := mkForecastForReconciliation(t, "CP25001", 7, "b1", "100.00")
+	c, _ := model.NewConcession(2025, "B1-01", "b1", "concept", model.MoneyOf(100), model.MoneyOf(100))
+	l, _ := model.NewConcessionForecast(2025, "B1-01", "CP25001")
+	inv := mkInvoice(t, 1, 2025, "100.00", "100.00", "CP25001", "100.00")
+	types, subs := taxTypesAndSubtypes(t)
+
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{f},
+		Concessions: []model.Concession{c}, Links: []model.ConcessionForecast{l},
+		Invoices: []model.Invoice{inv}, Types: types, Subtypes: subs,
+	}
+	got, err := ComputeReconciliation(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Categories) != 1 {
+		t.Fatalf("Categories = %d, want 1", len(got.Categories))
+	}
+	if got.Categories[0].Category != model.CategoryInvestment {
+		t.Errorf("Category = %v, want INVESTMENT", got.Categories[0].Category)
+	}
+}
+
+func TestReconciliation_CategoryNetDeviation_A4OverA6Under(t *testing.T) {
+	// a4 over-spent by 461, a6 under-spent by 879 → NetDeviation for CURRENT = 418
+	fA4 := mkForecastForReconciliation(t, "CP25004", 7, "a4", "500.00")
+	fA6 := mkForecastForReconciliation(t, "CP25006", 7, "a6", "1000.00")
+
+	// a4 concession: Granted 500, Executed 961 → deviation −461
+	cA4, _ := model.NewConcession(2025, "A4-01", "a4", "cA4",
+		mustMoney("500.00"), mustMoney("500.00"))
+	lA4, _ := model.NewConcessionForecast(2025, "A4-01", "CP25004")
+	invA4 := mkInvoice(t, 1, 2025, "961.00", "961.00", "CP25004", "961.00")
+
+	// a6 concession: Granted 1000, Executed 121 → deviation +879
+	cA6, _ := model.NewConcession(2025, "A6-01", "a6", "cA6",
+		mustMoney("1000.00"), mustMoney("1000.00"))
+	lA6, _ := model.NewConcessionForecast(2025, "A6-01", "CP25006")
+	invA6 := mkInvoice(t, 2, 2025, "121.00", "121.00", "CP25006", "121.00")
+
+	types, subs := taxTypesAndSubtypes(t)
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{fA4, fA6},
+		Concessions: []model.Concession{cA4, cA6},
+		Links:       []model.ConcessionForecast{lA4, lA6},
+		Invoices:    []model.Invoice{invA4, invA6},
+		Types:       types, Subtypes: subs,
+	}
+	got, _ := ComputeReconciliation(in)
+	if len(got.Categories) != 1 {
+		t.Fatalf("want 1 category, got %d", len(got.Categories))
+	}
+	cat := got.Categories[0]
+	if cat.NetDeviation.String() != "418.00" {
+		t.Errorf("NetDeviation = %s, want 418.00", cat.NetDeviation.String())
+	}
+	// Per-subtype deviations preserved (raw, not netted)
+	subMap := map[string]SubtypeReconciliation{}
+	for _, s := range cat.Subtypes {
+		subMap[s.Code] = s
+	}
+	if got := subMap["a4"].Deviation.String(); got != "-461.00" {
+		t.Errorf("a4 Deviation = %s, want -461.00", got)
+	}
+	if got := subMap["a6"].Deviation.String(); got != "879.00" {
+		t.Errorf("a6 Deviation = %s, want 879.00", got)
+	}
+}
+
+func TestReconciliation_DisabledForecastsSkipped(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
+	// A disabled forecast — build it directly with enabled=false
+	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	p, _ := model.NewPartner(7, "X", "Y", "V", "y@e.cat", "6", model.Productor, 1, planned, false)
+	disabled, _ := model.NewExpenseForecast("CP25002", p, "d", "", model.MoneyOf(50), model.ZeroMoney(),
+		nil, planned, 2025, "a2", model.NewCommonScope(), planned, false /*enabled=false*/)
+	c, _ := model.NewConcession(2025, "A2-01", "a2", "concept", model.MoneyOf(150), model.MoneyOf(150))
+	l1, _ := model.NewConcessionForecast(2025, "A2-01", "CP25001")
+	l2, _ := model.NewConcessionForecast(2025, "A2-01", "CP25002")
+	invA := mkInvoice(t, 1, 2025, "100.00", "100.00", "CP25001", "100.00")
+	invB := mkInvoice(t, 2, 2025, "50.00", "50.00", "CP25002", "50.00")
+
+	types, subs := taxTypesAndSubtypes(t)
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{f, disabled},
+		Concessions: []model.Concession{c},
+		Links:       []model.ConcessionForecast{l1, l2},
+		Invoices:    []model.Invoice{invA, invB},
+		Types:       types, Subtypes: subs,
+	}
+	got, _ := ComputeReconciliation(in)
+	// CP25002 should not appear anywhere; its 50 shouldn't be in Executed either.
+	for _, cat := range got.Categories {
+		for _, s := range cat.Subtypes {
+			for _, cn := range s.Concessions {
+				for _, fr := range cn.Forecasts {
+					if fr.ForecastID == "CP25002" {
+						t.Fatal("disabled forecast leaked into output")
+					}
+				}
+			}
+		}
+	}
+}
+
