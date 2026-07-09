@@ -324,7 +324,7 @@ func TestReconciliation2025Fixture_ComputeMatchesWorkbook(t *testing.T) {
 }
 
 // new2025World seeds a scratch SQLite DB with the 2025 taxonomy (a2/a3/a4/a6/b1/b2
-// + their CURRENT/INVESTMENT types), section "oliva", partners 1/2/4/5/6/7/8/9,
+// + their CURRENT/INVESTMENT types), section "oliva", partners 1/2/4/5/6/7/8/11 (per the actual export-forecasts.json fixture),
 // an OPEN 2025 window, and 38 forecasts CP25001..CP25038 with the concepts and
 // gross amounts that match the workbook. Reads the concepts + gross amounts
 // from private/export-forecasts.json.
@@ -342,7 +342,6 @@ func new2025World(t *testing.T) reconWorld {
 	tax := persistence.NewTaxonomyRepository(q)
 	pr := persistence.NewPartnerRepository(q)
 	sr := persistence.NewSectionRepository(q)
-	_ = sr // used below for section Save
 
 	// OPEN 2025 window (required for forecast import).
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -366,7 +365,7 @@ func new2025World(t *testing.T) reconWorld {
 
 	// Section "oliva".
 	sec, _ := model.NewSection("oliva", "Secció Oliva", true, 1)
-	_ = persistence.NewSectionRepository(q).Save(ctx, sec)
+	_ = sr.Save(ctx, sec)
 
 	// Partners 1/2/4/5/6/7/8/11 (derived from export-forecasts.json).
 	for _, pid := range []int{1, 2, 4, 5, 6, 7, 8, 11} {
