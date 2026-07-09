@@ -70,8 +70,9 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		BoardAuth: application.NewBoardAuthorizationService(txm, clock, cfg.Admin.Email),
 		Forecasts: application.NewForecastService(txm, clock),
 		Windows:   application.NewWindowService(txm, pdf, clock),
-		Reports:   application.NewReportService(txm),
-		Exporter:  reportadapter.NewReportExporter(pdf),
+		Reports:        application.NewReportService(txm),
+		Reconciliation: application.NewReconciliationService(txm),
+		Exporter:       reportadapter.NewReportExporter(pdf),
 		Backup:    backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
 		Cfg:       cfg,
 	}

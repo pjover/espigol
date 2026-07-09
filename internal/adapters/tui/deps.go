@@ -18,8 +18,9 @@ type Deps struct {
 	BoardAuth *application.BoardAuthorizationService
 	Forecasts *application.ForecastService
 	Windows   *application.WindowService
-	Reports   *application.ReportService
-	Exporter  report.ReportExporter
+	Reports       *application.ReportService
+	Reconciliation *application.ReconciliationService
+	Exporter      report.ReportExporter
 	Backup    backup.Backuper
 	Cfg       *config.Config
 }
