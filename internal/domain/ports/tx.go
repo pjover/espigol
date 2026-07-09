@@ -5,14 +5,15 @@ import "context"
 // RepoSet is the set of transaction-scoped repositories handed to a WithinTx
 // closure. All share one transaction.
 type RepoSet struct {
-	Partners  PartnerRepository
-	Forecasts ForecastRepository
-	Windows   WindowRepository
-	Taxonomy  TaxonomyRepository
-	Sections  SectionRepository
-	Reports   ReportRepository
-	Audit     AuditLog
-	BoardAuth BoardAuthorizationRepository
+	Partners    PartnerRepository
+	Forecasts   ForecastRepository
+	Windows     WindowRepository
+	Taxonomy    TaxonomyRepository
+	Sections    SectionRepository
+	Reports     ReportRepository
+	Audit       AuditLog
+	BoardAuth   BoardAuthorizationRepository
+	Concessions ConcessionRepository
 }
 
 // TxManager runs a unit of work inside a single database transaction, handing

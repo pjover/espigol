@@ -40,6 +40,16 @@ type TaxonomyRepository interface {
 	DeleteSubtype(ctx context.Context, year int, code string) error
 }
 
+// ConcessionRepository manages Concession grants and their forecast membership.
+type ConcessionRepository interface {
+	ListByYear(ctx context.Context, year int) ([]model.Concession, error)
+	ListForecastLinksByYear(ctx context.Context, year int) ([]model.ConcessionForecast, error)
+	Save(ctx context.Context, c model.Concession) error
+	Delete(ctx context.Context, year int, groupCode string) error
+	ReplaceMembership(ctx context.Context, year int, groupCode string, forecastIDs []string) error
+	ReplaceForYear(ctx context.Context, year int, concessions []model.Concession, links []model.ConcessionForecast) error
+}
+
 // WindowRepository manages SubmissionWindow aggregates.
 type WindowRepository interface {
 	Save(ctx context.Context, w model.SubmissionWindow) error
