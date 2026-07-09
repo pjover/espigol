@@ -388,5 +388,21 @@ func TestReconciliation_DisabledForecastsSkipped(t *testing.T) {
 			}
 		}
 	}
+
+	// Verify Executed exclusion: exactly one category, one subtype, one concession
+	if len(got.Categories) != 1 {
+		t.Fatalf("Categories = %d, want 1", len(got.Categories))
+	}
+	cat := got.Categories[0]
+	if len(cat.Subtypes) != 1 || len(cat.Subtypes[0].Concessions) != 1 {
+		t.Fatalf("expected exactly one concession, got %+v", cat)
+	}
+	cn := cat.Subtypes[0].Concessions[0]
+	if cn.Executed.String() != "100.00" {
+		t.Errorf("Concession Executed = %s, want 100.00 (disabled forecast's invoice must be excluded)", cn.Executed.String())
+	}
+	if cn.Assigned.String() != "100.00" {
+		t.Errorf("Concession Assigned = %s, want 100.00", cn.Assigned.String())
+	}
 }
 

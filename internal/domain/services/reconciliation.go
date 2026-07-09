@@ -121,6 +121,9 @@ func ComputeReconciliation(in ReconciliationInput) (ReconciliationData, error) {
 	}
 	partnerIDForForecast := make(map[string]int, len(in.Forecasts))
 	for _, f := range in.Forecasts {
+		if !f.Enabled() {
+			continue
+		}
 		// ExpenseForecast exposes the partner via Partner(), not PartnerID().
 		partnerIDForForecast[f.ID()] = f.Partner().ID()
 	}
