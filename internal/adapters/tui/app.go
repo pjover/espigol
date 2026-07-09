@@ -166,7 +166,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "1", "2", "3", "4", "5", "6":
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(keyMsg.String()[0] - '1')
 			if idx >= 0 && idx < len(m.panels) {
 				m.focused = idx

@@ -11,10 +11,11 @@ See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for t
 
 ## Admin panel
 
-The admin TUI's `[7] Admin` panel acts on the year selected in the sidebar and offers four keys:
+The admin TUI's `[7] Admin` panel acts on the year selected in the sidebar and offers five keys:
 
 - `f` — generate the report for the selected year (PDF + Markdown into `~/.config/espigol/reports/`).
-- `i` — import forecasts for the selected year from a JSON file (see below).
+- `i` — import forecasts for the selected year from a JSON file (see below). Requires the window to be **OPEN**.
+- `a` — import reconciliation (concessions + invoices) for the selected year from a JSON file (see [Subsidy reconciliation (Ajuts)](#subsidy-reconciliation-ajuts)). No window-state gate.
 - `b` — back up the database to `~/.config/espigol/backups/espigol-<timestamp>.db`.
 - `r` — restore the database: pick a backup from the list; the current database is backed up first and the chosen one is applied on the next launch.
 

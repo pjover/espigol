@@ -17,7 +17,7 @@ build: fmt
 	mkdir -p bin
 	go build -o $(BIN) ./cmd/espigol
 
-run: build
+run: build vet
 	./$(BIN) $(ARGS)
 
 tui: build
