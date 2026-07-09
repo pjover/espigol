@@ -14,6 +14,7 @@ type RepoSet struct {
 	Audit       AuditLog
 	BoardAuth   BoardAuthorizationRepository
 	Concessions ConcessionRepository
+	Invoices    InvoiceRepository
 }
 
 // TxManager runs a unit of work inside a single database transaction, handing

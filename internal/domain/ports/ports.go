@@ -88,3 +88,11 @@ type BoardAuthorizationRepository interface {
 	// Remove deletes the matching authorization, returning the rows removed (0 if none).
 	Remove(ctx context.Context, partnerID int, scopeKind model.ScopeKind, sectionCode string) (int64, error)
 }
+
+// InvoiceRepository manages Invoice aggregates (header + payments + forecast links).
+type InvoiceRepository interface {
+	ListByYear(ctx context.Context, year int) ([]model.Invoice, error)
+	Save(ctx context.Context, inv model.Invoice) (model.Invoice, error)
+	Delete(ctx context.Context, invoiceID int) error
+	ReplaceForYear(ctx context.Context, year int, invoices []model.Invoice) error
+}

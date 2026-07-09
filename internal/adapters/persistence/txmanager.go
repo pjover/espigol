@@ -42,6 +42,7 @@ func (t *TxManager) WithinTx(ctx context.Context, fn func(ports.RepoSet) error) 
 		Audit:       NewAuditLog(q),
 		BoardAuth:   NewBoardAuthorizationRepository(q),
 		Concessions: NewConcessionRepository(q),
+		Invoices:    NewInvoiceRepository(q),
 	}
 	if err := fn(repos); err != nil {
 		return err
