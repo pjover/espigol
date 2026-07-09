@@ -7,6 +7,7 @@ import (
 
 	"github.com/pjover/espigol/internal/domain/model"
 	"github.com/pjover/espigol/internal/domain/ports"
+	"github.com/pjover/espigol/internal/domain/services"
 )
 
 // PaymentInput / LinkInput / ConcessionInput / InvoiceInput are the driving-side
@@ -300,4 +301,71 @@ func (s *ReconciliationService) DeleteInvoice(ctx context.Context, invoiceID int
 	return s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
 		return r.Invoices.Delete(ctx, invoiceID)
 	})
+}
+
+// Compute produces the year's reconciliation snapshot: per-forecast
+// AssignedSubsidy plus subtype/category roll-ups and category-net deviations.
+// Read-only — runs inside a single WithinTx for a consistent snapshot but
+// never writes. No window-state gate: reconciliation is a year-keyed overlay
+// editable in any window state (matches the rest of ReconciliationService).
+func (s *ReconciliationService) Compute(ctx context.Context, year int) (services.ReconciliationData, error) {
+	var out services.ReconciliationData
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		forecasts, err := r.Forecasts.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		concessions, err := r.Concessions.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		links, err := r.Concessions.ListForecastLinksByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		invoices, err := r.Invoices.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		subtypes, err := r.Taxonomy.ListSubtypes(ctx, year)
+		if err != nil {
+			return err
+		}
+		types, err := r.Taxonomy.ListTypes(ctx, year)
+		if err != nil {
+			return err
+		}
+
+		// Load only the partners actually referenced by enabled forecasts.
+		partnerIDs := map[int]bool{}
+		for _, f := range forecasts {
+			if f.Enabled() {
+				partnerIDs[f.Partner().ID()] = true
+			}
+		}
+		partners := make([]model.Partner, 0, len(partnerIDs))
+		for id := range partnerIDs {
+			p, ok, err := r.Partners.FindByID(ctx, id)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("partner %d referenced by forecast not found", id)
+			}
+			partners = append(partners, p)
+		}
+
+		out, err = services.ComputeReconciliation(services.ReconciliationInput{
+			Year:        year,
+			Forecasts:   forecasts,
+			Concessions: concessions,
+			Links:       links,
+			Invoices:    invoices,
+			Subtypes:    subtypes,
+			Types:       types,
+			Partners:    partners,
+		})
+		return err
+	})
+	return out, err
 }

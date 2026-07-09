@@ -128,6 +128,50 @@ func newReconWorld(t *testing.T) reconWorld {
 	return reconWorld{tx: persistence.NewTxManager(conn), forecastID: f.ID()}
 }
 
+func TestReconciliationService_Compute_HappyPath(t *testing.T) {
+	world := newReconWorld(t) // seeds 2025 window, subtype a6, partner 7, one forecast CP25001
+	svc := application.NewReconciliationService(world.tx)
+	ctx := context.Background()
+
+	// Seed a concession + a fully-paid invoice via AdminImport so we exercise
+	// the same import path used in production.
+	in := application.ReconciliationImport{
+		Year: 2025,
+		Concessions: []application.ConcessionInput{{
+			Year: 2025, GroupCode: "A6-01", SubtypeCode: "a6", Concept: "Adob",
+			RequestedTotal: model.MoneyOf(500), GrantedAmount: model.MoneyOf(500),
+			ForecastIDs:    []string{world.forecastID},
+		}},
+		Invoices: []application.InvoiceInput{{
+			Year: 2025, Issuer: "Sup", Nif: "B1", Number: "F1",
+			IssueDate: time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC), NetAmount: model.MoneyOf(500),
+			Payments: []application.PaymentInput{{PaidOn: time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), Amount: model.MoneyOf(500)}},
+			Links:    []application.LinkInput{{ForecastID: world.forecastID, Amount: model.MoneyOf(500)}},
+		}},
+	}
+	if _, err := svc.AdminImport(ctx, in); err != nil {
+		t.Fatalf("seed AdminImport: %v", err)
+	}
+
+	got, err := svc.Compute(ctx, 2025)
+	if err != nil {
+		t.Fatalf("Compute: %v", err)
+	}
+	if got.Year != 2025 {
+		t.Errorf("Year = %d, want 2025", got.Year)
+	}
+	if len(got.Categories) != 1 {
+		t.Fatalf("Categories = %d, want 1", len(got.Categories))
+	}
+	// The world helper builds only subtype a6 (CURRENT).
+	if got.Categories[0].Category != model.CategoryCurrent {
+		t.Errorf("Category = %v, want CURRENT", got.Categories[0].Category)
+	}
+	if got.Categories[0].Assigned.String() != "500.00" {
+		t.Errorf("Assigned = %s, want 500.00", got.Categories[0].Assigned.String())
+	}
+}
+
 // newReconWorldWithForecasts seeds a 2025 window + subtype a6 + partner and
 // creates forecasts until the given ids exist (CP250nn are allocated in order).
 func newReconWorldWithForecasts(t *testing.T, ids ...string) reconWorld {
