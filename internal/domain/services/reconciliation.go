@@ -214,12 +214,9 @@ type groupResult struct {
 // Σ Assigned_i = Base_g exactly. Forecasts not in any group (or in a group
 // with Executed_g == 0) get Assigned = 0.
 func assignForGroups(in ReconciliationInput, exec map[string]forecastExec) (map[string]groupResult, map[string]model.Money) {
-	// forecastID → groupCode (one concession per forecast per Phase 1 PK).
-	forecastGroup := make(map[string]string, len(in.Links))
 	// groupCode → []forecastID
 	groupForecasts := make(map[string][]string, len(in.Concessions))
 	for _, l := range in.Links {
-		forecastGroup[l.ForecastID()] = l.GroupCode()
 		groupForecasts[l.GroupCode()] = append(groupForecasts[l.GroupCode()], l.ForecastID())
 	}
 

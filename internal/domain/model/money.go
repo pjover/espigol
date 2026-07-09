@@ -38,7 +38,7 @@ func ZeroMoney() Money {
 // MoneyFromDecimalCents constructs a Money from a cent-scale decimal (e.g.
 // 12345 → 123.45). Used by services for largest-remainder cent-close.
 func MoneyFromDecimalCents(cents decimal.Decimal) Money {
-	return Money{amount: cents.Div(decimal.NewFromInt(100)).Round(2)}
+	return Money{amount: normalize(cents.Div(decimal.NewFromInt(100)))}
 }
 
 func (m Money) Plus(other Money) Money  { return Money{amount: normalize(m.amount.Add(other.amount))} }
