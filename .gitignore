@@ -24,3 +24,6 @@ espigol.code-workspace
 
 # SDD scratch ledger (task briefs, reports, review diffs) — not part of the project
 /.superpowers/
+
+# Private files
+.private/
