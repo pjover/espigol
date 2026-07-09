@@ -120,3 +120,92 @@ func TestReconciliation_PaymentGate_ForecastWithNoLinks_ExecutedZero(t *testing.
 		t.Errorf("Invoices should be empty, got %d", len(got.Invoices))
 	}
 }
+
+func TestReconciliation_Group_UnderRun_AssignedEqualsExecuted(t *testing.T) {
+	// Granted 100, Executed 60 → Assigned = 60, prorated to forecasts
+	f1 := mkForecastForReconciliation(t, "CP25001", 7, "a2", "70.00")
+	f2 := mkForecastForReconciliation(t, "CP25002", 7, "a2", "30.00")
+	invGranted, _ := model.MoneyFromString("100.00")
+	c, _ := model.NewConcession(2025, "A2-01", "a2", "concept", model.MoneyOf(100), invGranted)
+	l1, _ := model.NewConcessionForecast(2025, "A2-01", "CP25001")
+	l2, _ := model.NewConcessionForecast(2025, "A2-01", "CP25002")
+	invA := mkInvoice(t, 10, 2025, "40.00", "40.00", "CP25001", "40.00")
+	invB := mkInvoice(t, 11, 2025, "20.00", "20.00", "CP25002", "20.00")
+
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{f1, f2},
+		Concessions: []model.Concession{c},
+		Links:       []model.ConcessionForecast{l1, l2},
+		Invoices:    []model.Invoice{invA, invB},
+	}
+	exec := executedAndPending(in)
+	groups, assigned := assignForGroups(in, exec)
+
+	if got := groups["A2-01"].Base.String(); got != "60.00" {
+		t.Errorf("Base = %s, want 60.00", got)
+	}
+	if got := assigned["CP25001"].String(); got != "40.00" {
+		t.Errorf("CP25001 assigned = %s, want 40.00", got)
+	}
+	if got := assigned["CP25002"].String(); got != "20.00" {
+		t.Errorf("CP25002 assigned = %s, want 20.00", got)
+	}
+}
+
+func TestReconciliation_Group_OverRun_CappedAtGranted(t *testing.T) {
+	// Granted 100, Executed 150 → Assigned = 100, prorated by share of Executed
+	f1 := mkForecastForReconciliation(t, "CP25001", 7, "a2", "70.00")
+	f2 := mkForecastForReconciliation(t, "CP25002", 7, "a2", "30.00")
+	c, _ := model.NewConcession(2025, "A2-01", "a2", "concept", model.MoneyOf(100), model.MoneyOf(100))
+	l1, _ := model.NewConcessionForecast(2025, "A2-01", "CP25001")
+	l2, _ := model.NewConcessionForecast(2025, "A2-01", "CP25002")
+	invA := mkInvoice(t, 10, 2025, "100.00", "100.00", "CP25001", "100.00")
+	invB := mkInvoice(t, 11, 2025, "50.00", "50.00", "CP25002", "50.00")
+
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{f1, f2},
+		Concessions: []model.Concession{c},
+		Links:       []model.ConcessionForecast{l1, l2},
+		Invoices:    []model.Invoice{invA, invB},
+	}
+	exec := executedAndPending(in)
+	groups, assigned := assignForGroups(in, exec)
+
+	if got := groups["A2-01"].Base.String(); got != "100.00" {
+		t.Errorf("Base = %s, want 100.00", got)
+	}
+	// share 100/150 * 100 = 66.67 (largest remainder); 50/150 * 100 = 33.33
+	sum := assigned["CP25001"].Plus(assigned["CP25002"])
+	if sum.String() != "100.00" {
+		t.Errorf("Σ Assigned = %s, want 100.00 exactly", sum.String())
+	}
+}
+
+func TestReconciliation_LargestRemainder_ClosesCent(t *testing.T) {
+	// Granted 100.00, two equal Executed of 33.33 each → Σ Executed = 66.66,
+	// Base = min(100, 66.66) = 66.66. Since Executed == Base, Assigned == Executed.
+	// The remainder rule matters when Base rounds unevenly across shares:
+	// try Granted 100 with Executed 33.33 / 33.33 → shares are 50/50 of Base=66.66
+	// → 33.33 each. Sum = 66.66 exactly. No leak.
+	f1 := mkForecastForReconciliation(t, "CP25001", 7, "a2", "50.00")
+	f2 := mkForecastForReconciliation(t, "CP25002", 7, "a2", "50.00")
+	c, _ := model.NewConcession(2025, "A2-01", "a2", "concept", model.MoneyOf(100), model.MoneyOf(100))
+	l1, _ := model.NewConcessionForecast(2025, "A2-01", "CP25001")
+	l2, _ := model.NewConcessionForecast(2025, "A2-01", "CP25002")
+	invA := mkInvoice(t, 10, 2025, "33.33", "33.33", "CP25001", "33.33")
+	invB := mkInvoice(t, 11, 2025, "33.33", "33.33", "CP25002", "33.33")
+
+	in := ReconciliationInput{
+		Year: 2025, Forecasts: []model.ExpenseForecast{f1, f2},
+		Concessions: []model.Concession{c}, Links: []model.ConcessionForecast{l1, l2},
+		Invoices: []model.Invoice{invA, invB},
+	}
+	exec := executedAndPending(in)
+	groups, assigned := assignForGroups(in, exec)
+
+	base := groups["A2-01"].Base
+	sum := assigned["CP25001"].Plus(assigned["CP25002"])
+	if sum.Cmp(base) != 0 {
+		t.Errorf("Σ Assigned = %s, want %s exactly (no rounding leak)", sum, base)
+	}
+}

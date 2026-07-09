@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pjover/espigol/internal/domain/model"
+	"github.com/shopspring/decimal"
 )
 
 // ReconciliationInput is everything ComputeReconciliation needs to compute
@@ -197,3 +198,101 @@ func latestPaidOn(inv model.Invoice, fullyPaid bool) *time.Time {
 	}
 	return &latest
 }
+
+// groupResult carries a Concessió group's Base (=min(Granted, Executed_g)) and
+// its Assigned total (equals Base — kept as a separate field so the roll-ups
+// task in Task 5 can just sum without recomputing).
+type groupResult struct {
+	Base     model.Money
+	Assigned model.Money
+	Executed model.Money // Σ Executed_i for forecasts in group (used later)
+}
+
+// assignForGroups computes Base_g = min(Granted_g, Executed_g) for every
+// Concessió, then prorates Base_g across the group's forecasts by each
+// forecast's share of Executed_g. Uses largest-remainder to close the cent so
+// Σ Assigned_i = Base_g exactly. Forecasts not in any group (or in a group
+// with Executed_g == 0) get Assigned = 0.
+func assignForGroups(in ReconciliationInput, exec map[string]forecastExec) (map[string]groupResult, map[string]model.Money) {
+	// forecastID → groupCode (one concession per forecast per Phase 1 PK).
+	forecastGroup := make(map[string]string, len(in.Links))
+	// groupCode → []forecastID
+	groupForecasts := make(map[string][]string, len(in.Concessions))
+	for _, l := range in.Links {
+		forecastGroup[l.ForecastID()] = l.GroupCode()
+		groupForecasts[l.GroupCode()] = append(groupForecasts[l.GroupCode()], l.ForecastID())
+	}
+
+	groups := make(map[string]groupResult, len(in.Concessions))
+	assigned := make(map[string]model.Money, len(exec))
+	for id := range exec {
+		assigned[id] = model.ZeroMoney()
+	}
+
+	for _, c := range in.Concessions {
+		ids := groupForecasts[c.GroupCode()]
+		// Σ Executed_g across the group's forecasts (only enabled ones survive
+		// in the exec map; unknown ids are skipped).
+		execG := model.ZeroMoney()
+		for _, id := range ids {
+			if fx, ok := exec[id]; ok {
+				execG = execG.Plus(fx.Executed)
+			}
+		}
+		var base model.Money
+		if execG.Cmp(c.GrantedAmount()) < 0 {
+			base = execG
+		} else {
+			base = c.GrantedAmount()
+		}
+		groups[c.GroupCode()] = groupResult{Base: base, Assigned: base, Executed: execG}
+
+		if execG.IsZero() {
+			continue // all Assigned_i stay at 0
+		}
+		// Largest-remainder: compute each forecast's fractional Assigned as
+		// Base * Executed_i / Executed_g, take the floor at cent precision,
+		// then distribute the remaining cents to the largest fractional parts.
+		type share struct {
+			id       string
+			floor    model.Money
+			fraction decimal.Decimal // fractional cents lost to floor
+		}
+		shares := make([]share, 0, len(ids))
+		baseCents := base.Decimal().Mul(decimal.NewFromInt(100)) // ×100 → cent scale
+		execGDec := execG.Decimal()
+		var floorSumCents decimal.Decimal
+		for _, id := range ids {
+			fx, ok := exec[id]
+			if !ok {
+				continue
+			}
+			// exact_i (in cents) = Base * Executed_i / Executed_g * 100
+			exactCents := baseCents.Mul(fx.Executed.Decimal()).Div(execGDec)
+			floorCents := exactCents.Floor()
+			frac := exactCents.Sub(floorCents)
+			floor := model.MoneyFromDecimalCents(floorCents)
+			shares = append(shares, share{id: id, floor: floor, fraction: frac})
+			floorSumCents = floorSumCents.Add(floorCents)
+		}
+		// Distribute remainder cents (base_cents − Σ floor_cents) to the largest fractions.
+		remaining := baseCents.Sub(floorSumCents).IntPart()
+		// Stable sort by fraction desc; tie-break by id asc.
+		sort.SliceStable(shares, func(i, j int) bool {
+			if !shares[i].fraction.Equal(shares[j].fraction) {
+				return shares[i].fraction.GreaterThan(shares[j].fraction)
+			}
+			return shares[i].id < shares[j].id
+		})
+		oneCent, _ := model.MoneyFromString("0.01")
+		for i := range shares {
+			assign := shares[i].floor
+			if int64(i) < remaining {
+				assign = assign.Plus(oneCent)
+			}
+			assigned[shares[i].id] = assign
+		}
+	}
+	return groups, assigned
+}
+
