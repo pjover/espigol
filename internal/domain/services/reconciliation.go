@@ -206,6 +206,7 @@ type groupResult struct {
 	Base     model.Money
 	Assigned model.Money
 	Executed model.Money // Σ Executed_i for forecasts in group (used later)
+	Granted  model.Money // Concession.GrantedAmount, needed by status precedence
 }
 
 // assignForGroups computes Base_g = min(Granted_g, Executed_g) for every
@@ -242,7 +243,7 @@ func assignForGroups(in ReconciliationInput, exec map[string]forecastExec) (map[
 		} else {
 			base = c.GrantedAmount()
 		}
-		groups[c.GroupCode()] = groupResult{Base: base, Assigned: base, Executed: execG}
+		groups[c.GroupCode()] = groupResult{Base: base, Assigned: base, Executed: execG, Granted: c.GrantedAmount()}
 
 		if execG.IsZero() {
 			continue // all Assigned_i stay at 0
@@ -291,5 +292,29 @@ func assignForGroups(in ReconciliationInput, exec map[string]forecastExec) (map[
 		}
 	}
 	return groups, assigned
+}
+
+// statusFor applies the precedence rule from the Phase 2 spec:
+// 1. NoInvoice      — zero links total.
+// 2. PaymentPending — has any unpaid link (Pending > 0).
+// 3. OverExecuted   — paid Executed_i > GrossAmount_i.
+// 4. PartiallyJustified — group Executed < Granted.
+// 5. FullyJustified — group Executed ≥ Granted.
+// A forecast not attached to any group (data hygiene issue) is treated as
+// NoInvoice.
+func statusFor(f model.ExpenseForecast, fx forecastExec, g groupResult, hasGroup bool) ForecastReconStatus {
+	if len(fx.Invoices) == 0 || !hasGroup {
+		return StatusNoInvoice
+	}
+	if !fx.Pending.IsZero() {
+		return StatusPaymentPending
+	}
+	if fx.Executed.Cmp(f.GrossAmount()) > 0 {
+		return StatusOverExecuted
+	}
+	if g.Executed.Cmp(g.Granted) < 0 {
+		return StatusPartiallyJustified
+	}
+	return StatusFullyJustified
 }
 

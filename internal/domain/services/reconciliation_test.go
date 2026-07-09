@@ -209,3 +209,63 @@ func TestReconciliation_LargestRemainder_ClosesCent(t *testing.T) {
 		t.Errorf("Σ Assigned = %s, want %s exactly (no rounding leak)", sum, base)
 	}
 }
+
+func TestReconciliation_Status_NoInvoice(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
+	fx := forecastExec{Executed: model.ZeroMoney(), Pending: model.ZeroMoney()}
+	got := statusFor(f, fx, groupResult{}, true)
+	if got != StatusNoInvoice {
+		t.Errorf("status = %v, want StatusNoInvoice", got)
+	}
+}
+
+func TestReconciliation_Status_PaymentPending_WhenAnyLinkUnpaid(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
+	// Both paid and unpaid links → still PaymentPending
+	pending, _ := model.MoneyFromString("30.00")
+	execAmt, _ := model.MoneyFromString("70.00")
+	fx := forecastExec{Executed: execAmt, Pending: pending, Invoices: []InvoiceContribution{{}, {}}}
+	g := groupResult{Base: model.MoneyOf(100), Assigned: model.MoneyOf(100), Executed: execAmt}
+	got := statusFor(f, fx, g, true)
+	if got != StatusPaymentPending {
+		t.Errorf("status = %v, want StatusPaymentPending", got)
+	}
+}
+
+func TestReconciliation_Status_OverExecuted(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "50.00")
+	// Paid Executed 80 > GrossAmount 50, no pending, group fully justified
+	exec, _ := model.MoneyFromString("80.00")
+	fx := forecastExec{Executed: exec, Pending: model.ZeroMoney(), Invoices: []InvoiceContribution{{}}}
+	g := groupResult{Base: model.MoneyOf(100), Assigned: model.MoneyOf(100), Executed: exec}
+	got := statusFor(f, fx, g, true)
+	if got != StatusOverExecuted {
+		t.Errorf("status = %v, want StatusOverExecuted", got)
+	}
+}
+
+func TestReconciliation_Status_PartiallyJustified(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
+	// Executed 60 < GrossAmount 100, no pending, group Executed 60 < Granted 100
+	exec, _ := model.MoneyFromString("60.00")
+	granted, _ := model.MoneyFromString("100.00")
+	fx := forecastExec{Executed: exec, Pending: model.ZeroMoney(), Invoices: []InvoiceContribution{{}}}
+	g := groupResult{Base: exec, Assigned: exec, Executed: exec, Granted: granted}
+	got := statusFor(f, fx, g, true /*hasGroup*/)
+	if got != StatusPartiallyJustified {
+		t.Errorf("status = %v, want StatusPartiallyJustified", got)
+	}
+}
+
+func TestReconciliation_Status_FullyJustified(t *testing.T) {
+	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
+	// Executed 100 == GrossAmount, group Executed >= Granted
+	exec, _ := model.MoneyFromString("100.00")
+	granted, _ := model.MoneyFromString("100.00")
+	fx := forecastExec{Executed: exec, Pending: model.ZeroMoney(), Invoices: []InvoiceContribution{{}}}
+	g := groupResult{Base: granted, Assigned: granted, Executed: exec, Granted: granted}
+	got := statusFor(f, fx, g, true)
+	if got != StatusFullyJustified {
+		t.Errorf("status = %v, want StatusFullyJustified", got)
+	}
+}
