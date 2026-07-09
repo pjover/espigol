@@ -21,3 +21,6 @@ espigol.code-workspace
 
 # Root-level compiled binary
 /espigol
+
+# SDD scratch ledger (task briefs, reports, review diffs) — not part of the project
+/.superpowers/
