@@ -185,6 +185,12 @@ func (p ajutsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	case "i":
 		return p, p.importCmd()
 	}
+	if p.view == ajutsConcessions && p.deps.Reconciliation != nil {
+		switch msg.String() {
+		case "n", "e", "d":
+			return p.handleConcessionKey(msg.String())
+		}
+	}
 	return p, nil
 }
 
@@ -290,8 +296,15 @@ func (p ajutsPanel) Detail() string {
 }
 
 func (p ajutsPanel) Actions() []Action {
-	return []Action{
+	actions := []Action{
 		{Key: "tab", Label: "canvia vista"},
 		{Key: "i", Label: "importa JSON"},
 	}
+	if p.view == ajutsConcessions {
+		actions = append(actions,
+			Action{Key: "n", Label: "nova"},
+			Action{Key: "e", Label: "edita"},
+			Action{Key: "d", Label: "elimina"})
+	}
+	return actions
 }
