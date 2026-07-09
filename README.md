@@ -11,7 +11,7 @@ See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for t
 
 ## Admin panel
 
-The admin TUI's `[6] Admin` panel acts on the year selected in the sidebar and offers four keys:
+The admin TUI's `[7] Admin` panel acts on the year selected in the sidebar and offers four keys:
 
 - `f` — generate the report for the selected year (PDF + Markdown into `~/.config/espigol/reports/`).
 - `i` — import forecasts for the selected year from a JSON file (see below).
@@ -43,7 +43,7 @@ forecasts start unapproved.
 
 ### Subsidy reconciliation (Ajuts)
 
-The `[5] Ajuts` panel manages concession requests and invoice reconciliation for the selected year. The panel
+The `[6] Ajuts` panel manages concession requests and invoice reconciliation for the selected year. The panel
 operates in two views (toggled by `tab`): **Concessions** (subsidy requests grouped by partner/activity) and
 **Factures** (invoices linked to those concessions). All reconciliation data can be imported, created, edited,
 and deleted without any window-state gate, independent of the forecast submission process.
