@@ -67,25 +67,22 @@ func EnsureHome(home string) error {
 	return os.WriteFile(cfgPath, defaultConfigYAML(home), 0o600)
 }
 
-func defaultConfigYAML(home string) []byte {
-	return []byte(fmt.Sprintf(`# Espígol configuration — edit as needed.
+func defaultConfigYAML(_ string) []byte {
+	return []byte(`# Espígol configuration — edit as needed.
 # All keys can be overridden with ESPIGOL_<KEY> environment variables
 # (e.g. ESPIGOL_SERVER_PORT=9090, ESPIGOL_ADMIN_EMAIL=admin@example.org).
+#
+# Paths default to $ESPIGOL_HOME:
+#   output.dir  → $ESPIGOL_HOME/reports
+#   backup.dir  → $ESPIGOL_HOME/backups
+#   logo.path   → $ESPIGOL_HOME/logo.png
+# Uncomment and set below to override.
 
 business:
   name: "Cooperativa d'Estellencs"
 
 server:
   port: 8080
-
-output:
-  dir: %q
-
-backup:
-  dir: %q
-
-logo:
-  path: %q
 
 oauth:
   client_id: ""
@@ -94,11 +91,7 @@ oauth:
 
 admin:
   email: "admin@espigol"
-`,
-		filepath.Join(home, "reports"),
-		filepath.Join(home, "backups"),
-		filepath.Join(home, "logo.png"),
-	))
+`)
 }
 
 // Load reads <home>/config.yaml if present, applies defaults, and allows
@@ -131,14 +124,30 @@ func Load(home string) (*Config, error) {
 		}
 	}
 
+	// For home-derived paths, empty string in the config means "use the
+	// $ESPIGOL_HOME-relative default". This lets a synced config.yaml carry
+	// the key without pinning an absolute path from another machine.
+	outputDir := v.GetString("output.dir")
+	if outputDir == "" {
+		outputDir = filepath.Join(home, "reports")
+	}
+	backupDir := v.GetString("backup.dir")
+	if backupDir == "" {
+		backupDir = filepath.Join(home, "backups")
+	}
+	logoPath := v.GetString("logo.path")
+	if logoPath == "" {
+		logoPath = filepath.Join(home, "logo.png")
+	}
+
 	cfg := &Config{
 		Home:         home,
 		DBPath:       filepath.Join(home, "espigol.db"),
 		BusinessName: v.GetString("business.name"),
-		OutputDir:    v.GetString("output.dir"),
-		BackupDir:    v.GetString("backup.dir"),
+		OutputDir:    outputDir,
+		BackupDir:    backupDir,
 		ImportDir:    filepath.Join(home, "import"),
-		LogoPath:     v.GetString("logo.path"),
+		LogoPath:     logoPath,
 	}
 	cfg.Server.Port = v.GetInt("server.port")
 	cfg.OAuth.ClientID = v.GetString("oauth.client_id")
