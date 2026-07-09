@@ -745,17 +745,14 @@ func TestReconciliation_Status_OverExecuted(t *testing.T) {
 
 func TestReconciliation_Status_PartiallyJustified(t *testing.T) {
 	f := mkForecast(t, "CP25001", 7, "a2", "100.00")
-	// Executed 60 < GrossAmount 100, no pending, group has Executed 60 < Granted 100
+	// Executed 60 < GrossAmount 100, no pending, group Executed 60 < Granted 100
 	exec, _ := model.MoneyFromString("60.00")
+	granted, _ := model.MoneyFromString("100.00")
 	fx := forecastExec{Executed: exec, Pending: model.ZeroMoney(), Invoices: []InvoiceContribution{{}}}
-	g := groupResult{Base: exec, Assigned: exec, Executed: exec} // Base < Granted implicit via caller
-	// hasGroup + group Executed < Granted → PartiallyJustified. We surface via Base<GrantedAmount:
-	// statusFor signature takes group.Executed and the concession granted; simpler: statusFor
-	// receives the Granted amount too via `grantedForGroup` param.
+	g := groupResult{Base: exec, Assigned: exec, Executed: exec, Granted: granted}
 	got := statusFor(f, fx, g, true /*hasGroup*/)
-	// Test asserts the intended behavior; if the helper's shape differs, adjust it here.
-	if got != StatusPartiallyJustified && got != StatusFullyJustified {
-		t.Errorf("unexpected status = %v", got)
+	if got != StatusPartiallyJustified {
+		t.Errorf("status = %v, want StatusPartiallyJustified", got)
 	}
 }
 
@@ -763,8 +760,9 @@ func TestReconciliation_Status_FullyJustified(t *testing.T) {
 	f := mkForecast(t, "CP25001", 7, "a2", "100.00")
 	// Executed 100 == GrossAmount, group Executed >= Granted
 	exec, _ := model.MoneyFromString("100.00")
+	granted, _ := model.MoneyFromString("100.00")
 	fx := forecastExec{Executed: exec, Pending: model.ZeroMoney(), Invoices: []InvoiceContribution{{}}}
-	g := groupResult{Base: model.MoneyOf(100), Assigned: model.MoneyOf(100), Executed: exec}
+	g := groupResult{Base: granted, Assigned: granted, Executed: exec, Granted: granted}
 	got := statusFor(f, fx, g, true)
 	if got != StatusFullyJustified {
 		t.Errorf("status = %v, want StatusFullyJustified", got)
