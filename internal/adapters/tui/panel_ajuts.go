@@ -3,10 +3,12 @@ package tui
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/pjover/espigol/internal/adapters/importer"
 	"github.com/pjover/espigol/internal/domain/model"
 )
 
@@ -40,6 +42,7 @@ type ajutsPanel struct {
 	invoices    []model.Invoice
 	selected    int
 	err         error
+	status      string
 }
 
 // NewAjutsPanel builds the Ajuts panel.
@@ -84,6 +87,37 @@ func (p ajutsPanel) reloadCmd(run func(ctx context.Context) error) tea.Cmd {
 	}
 }
 
+// ajutsImportedMsg carries the outcome of an "i" JSON import trigger.
+type ajutsImportedMsg struct {
+	year   int
+	result string
+	err    error
+}
+
+func (p ajutsPanel) importCmd() tea.Cmd {
+	year := p.year
+	deps := p.deps
+	return func() tea.Msg {
+		if deps.Reconciliation == nil || deps.Cfg == nil {
+			return ajutsImportedMsg{year: year, err: fmt.Errorf("importació no disponible")}
+		}
+		path := filepath.Join(deps.Cfg.ImportDir, fmt.Sprintf("reconciliation-%d.json", year))
+		in, err := importer.LoadReconciliation(path, year)
+		if err != nil {
+			return ajutsImportedMsg{year: year, err: err}
+		}
+		res, err := deps.Reconciliation.AdminImport(context.Background(), in)
+		if err != nil {
+			return ajutsImportedMsg{year: year, err: err}
+		}
+		msg := fmt.Sprintf("Importat: %d concessions, %d factures", res.Concessions, res.Invoices)
+		if len(res.Warnings) > 0 {
+			msg += fmt.Sprintf(" (%d avisos)", len(res.Warnings))
+		}
+		return ajutsImportedMsg{year: year, result: msg}
+	}
+}
+
 func (p ajutsPanel) rowCount() int {
 	if p.view == ajutsConcessions {
 		return len(p.concessions)
@@ -111,6 +145,17 @@ func (p ajutsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 			p.selected = max(0, p.rowCount()-1)
 		}
 		return p, nil
+	case ajutsImportedMsg:
+		if msg.year != p.year {
+			return p, nil
+		}
+		if msg.err != nil {
+			p.err = msg.err
+			return p, nil
+		}
+		p.status = msg.result
+		p.err = nil
+		return p, p.loadCmd()
 	case tea.KeyMsg:
 		return p.handleKey(msg)
 	}
@@ -137,6 +182,8 @@ func (p ajutsPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 			p.selected++
 		}
 		return p, nil
+	case "i":
+		return p, p.importCmd()
 	}
 	return p, nil
 }
@@ -219,25 +266,32 @@ func paidLabel(inv model.Invoice) string {
 }
 
 func (p ajutsPanel) Detail() string {
+	prefix := ""
+	if p.status != "" {
+		prefix = p.status + "\n"
+	}
 	if p.err != nil {
-		return errDetail(p.err)
+		return prefix + errDetail(p.err)
 	}
 	if p.view == ajutsConcessions {
 		if p.selected < 0 || p.selected >= len(p.concessions) {
-			return ""
+			return prefix
 		}
 		c := p.concessions[p.selected]
-		return fmt.Sprintf("Concessió %s · %s · subtipus %s · Previsions: %s",
+		return prefix + fmt.Sprintf("Concessió %s · %s · subtipus %s · Previsions: %s",
 			c.GroupCode(), c.Concept(), c.SubtypeCode(), p.forecastIDsFor(c.GroupCode()))
 	}
 	if p.selected < 0 || p.selected >= len(p.invoices) {
-		return ""
+		return prefix
 	}
 	inv := p.invoices[p.selected]
-	return fmt.Sprintf("Factura %s · %s · Import %s · %d enllaços · %s",
+	return prefix + fmt.Sprintf("Factura %s · %s · Import %s · %d enllaços · %s",
 		inv.Number(), inv.Issuer(), inv.NetAmount(), len(inv.Links()), paidLabel(inv))
 }
 
 func (p ajutsPanel) Actions() []Action {
-	return []Action{{Key: "tab", Label: "canvia vista"}}
+	return []Action{
+		{Key: "tab", Label: "canvia vista"},
+		{Key: "i", Label: "importa JSON"},
+	}
 }
