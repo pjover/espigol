@@ -62,7 +62,7 @@ func NewTaxonomyPanel(deps Deps) Panel {
 	return taxonomyPanel{deps: deps}
 }
 
-func (p taxonomyPanel) Title() string { return "Tipus i subtipus" }
+func (p taxonomyPanel) Title() string { return "Taxonomia" }
 
 // loadYear loads the year's types+subtypes (flattened, types then their
 // subtypes) and its window state.

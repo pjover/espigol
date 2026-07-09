@@ -15,9 +15,10 @@ import (
 )
 
 // adminPanel is the "Admin" panel (formerly "Informes"). It operates on the
-// selected-year context and offers: f generate report, i import forecasts,
-// b backup the database, r restore it. It also lists which years have a stored
-// Report, for context.
+// selected-year context and offers: f generate report, p import forecasts
+// (requires OPEN window), c import concessions + invoices / ajuts (no window
+// gate), b backup the database, r restore it. It also lists which years have a
+// stored Report, for context.
 type adminPanel struct {
 	deps  Deps
 	year  int
@@ -56,6 +57,13 @@ type forecastsImportedMsg struct {
 	err    error
 }
 
+// reconciliationImportedMsg carries the outcome of importReconciliationCmd.
+type reconciliationImportedMsg struct {
+	year   int
+	result string
+	err    error
+}
+
 // backupDoneMsg carries the outcome of backupCmd.
 type backupDoneMsg struct {
 	path string
@@ -77,6 +85,32 @@ func importForecastsCmd(deps Deps, year int) tea.Cmd {
 		}
 		res, err := deps.Forecasts.AdminImport(context.Background(), adminEmail, year, entries)
 		return forecastsImportedMsg{year: year, result: res, err: err}
+	}
+}
+
+// importReconciliationCmd loads Home/import/reconciliation-<year>.json and
+// replaces the year's concessions + invoices via ReconciliationService.AdminImport.
+// No window-state gate: reconciliation is a year-keyed overlay editable in any
+// window state (unlike forecast import which requires OPEN).
+func importReconciliationCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		if deps.Reconciliation == nil || deps.Cfg == nil {
+			return reconciliationImportedMsg{year: year, err: fmt.Errorf("importació no disponible")}
+		}
+		path := filepath.Join(deps.Cfg.ImportDir, fmt.Sprintf("reconciliation-%d.json", year))
+		in, err := importer.LoadReconciliation(path, year)
+		if err != nil {
+			return reconciliationImportedMsg{year: year, err: err}
+		}
+		res, err := deps.Reconciliation.AdminImport(context.Background(), in)
+		if err != nil {
+			return reconciliationImportedMsg{year: year, err: err}
+		}
+		msg := fmt.Sprintf("Importat: %d concessions, %d factures", res.Concessions, res.Invoices)
+		if len(res.Warnings) > 0 {
+			msg += fmt.Sprintf(" (%d avisos)", len(res.Warnings))
+		}
+		return reconciliationImportedMsg{year: year, result: msg}
 	}
 }
 
@@ -184,6 +218,17 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, p.loadYearsCmd()
 
+	case reconciliationImportedMsg:
+		if msg.year != p.year {
+			return p, nil
+		}
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else {
+			p.result = &adminResult{text: msg.result}
+		}
+		return p, nil
+
 	case backupDoneMsg:
 		if msg.err != nil {
 			p.result = &adminResult{err: msg.err}
@@ -210,8 +255,10 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
 	case "f":
 		return p, p.findWindowStateCmd(p.year)
-	case "i":
+	case "p":
 		return p, importForecastsCmd(p.deps, p.year)
+	case "c":
+		return p, importReconciliationCmd(p.deps, p.year)
 	case "b":
 		return p, backupCmd(p.deps)
 	case "r":
@@ -256,13 +303,14 @@ func (p adminPanel) Detail() string {
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	return dimStyle.Render("f: informe · i: importa · b: còpia · r: restaura")
+	return dimStyle.Render("f: informe · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
 }
 
 func (p adminPanel) Actions() []Action {
 	return []Action{
 		{Key: "f", Label: "genera informe"},
-		{Key: "i", Label: "importa previsions"},
+		{Key: "p", Label: "importa previsions"},
+		{Key: "c", Label: "importa concessions i factures"},
 		{Key: "b", Label: "còpia de seguretat"},
 		{Key: "r", Label: "restaura"},
 	}

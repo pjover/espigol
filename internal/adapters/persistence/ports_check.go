@@ -11,4 +11,6 @@ var (
 	_ ports.ReportRepository             = (*ReportRepository)(nil)
 	_ ports.AuditLog                     = (*AuditLog)(nil)
 	_ ports.BoardAuthorizationRepository = (*BoardAuthorizationRepository)(nil)
+	_ ports.ConcessionRepository         = (*ConcessionRepository)(nil)
+	_ ports.InvoiceRepository            = (*InvoiceRepository)(nil)
 )

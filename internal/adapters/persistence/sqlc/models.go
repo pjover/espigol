@@ -25,6 +25,21 @@ type BoardAuthorization struct {
 	SectionCode sql.NullString
 }
 
+type Concession struct {
+	Year           int64
+	GroupCode      string
+	SubtypeCode    string
+	Concept        string
+	RequestedTotal string
+	GrantedAmount  string
+}
+
+type ConcessionForecast struct {
+	Year       int64
+	ForecastID string
+	GroupCode  string
+}
+
 type ExpenseForecast struct {
 	ID             string
 	PartnerID      int64
@@ -54,6 +69,31 @@ type ExpenseType struct {
 	Code     string
 	Label    string
 	Category string
+}
+
+type ForecastInvoice struct {
+	ForecastID string
+	InvoiceID  int64
+	Amount     string
+}
+
+type Invoice struct {
+	ID        int64
+	Year      int64
+	Issuer    string
+	Nif       string
+	Number    string
+	IssueDate string
+	NetAmount string
+	FilePath  sql.NullString
+	Notes     sql.NullString
+}
+
+type InvoicePayment struct {
+	ID        int64
+	InvoiceID int64
+	PaidOn    string
+	Amount    string
 }
 
 type Partner struct {

@@ -31,4 +31,7 @@ var (
 
 	ErrNotBoardMember = errors.New("partner is not a board member")
 	ErrAuthExists     = errors.New("board authorization already exists for that partner and scope")
+
+	ErrConcessionSubtypeMissing = errors.New("concession subtype not found for year")
+	ErrReconForecastMissing     = errors.New("referenced forecast not found for year")
 )

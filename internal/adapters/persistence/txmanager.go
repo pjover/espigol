@@ -33,14 +33,16 @@ func (t *TxManager) WithinTx(ctx context.Context, fn func(ports.RepoSet) error) 
 
 	q := sqlc.New(t.db).WithTx(tx)
 	repos := ports.RepoSet{
-		Partners:  NewPartnerRepository(q),
-		Forecasts: NewForecastRepository(t.db, q),
-		Windows:   NewWindowRepository(q),
-		Taxonomy:  NewTaxonomyRepository(q),
-		Sections:  NewSectionRepository(q),
-		Reports:   NewReportRepository(q),
-		Audit:     NewAuditLog(q),
-		BoardAuth: NewBoardAuthorizationRepository(q),
+		Partners:    NewPartnerRepository(q),
+		Forecasts:   NewForecastRepository(t.db, q),
+		Windows:     NewWindowRepository(q),
+		Taxonomy:    NewTaxonomyRepository(q),
+		Sections:    NewSectionRepository(q),
+		Reports:     NewReportRepository(q),
+		Audit:       NewAuditLog(q),
+		BoardAuth:   NewBoardAuthorizationRepository(q),
+		Concessions: NewConcessionRepository(q),
+		Invoices:    NewInvoiceRepository(q),
 	}
 	if err := fn(repos); err != nil {
 		return err

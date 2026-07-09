@@ -1,0 +1,13 @@
+{
+  "year": 2025,
+  "concessions": [
+    {"groupCode":"A6-02","subtypeCode":"a6","concept":"Adob orgànic",
+     "requestedTotal":"13880.00","grantedAmount":"13880.00","forecastIds":["CP25008","CP25009"]}
+  ],
+  "invoices": [
+    {"issuer":"Jardines Campaner","nif":"B12345678","number":"F878","issueDate":"2025-03-14",
+     "netAmount":"1234.56","filePath":"f878.pdf","notes":"Varies màquines",
+     "payments":[{"paidOn":"2025-04-01","amount":"1234.56"}],
+     "links":[{"forecastId":"CP25008","amount":"500.00"},{"forecastId":"CP25009","amount":"734.56"}]}
+  ]
+}

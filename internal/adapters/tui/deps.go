@@ -12,14 +12,15 @@ import (
 // down to NewApp; individual panels (Task 11/12) receive it unchanged so
 // they can call the application services directly.
 type Deps struct {
-	Partners  *application.PartnerService
-	Sections  *application.SectionService
-	Taxonomy  *application.TaxonomyService
-	BoardAuth *application.BoardAuthorizationService
-	Forecasts *application.ForecastService
-	Windows   *application.WindowService
-	Reports   *application.ReportService
-	Exporter  report.ReportExporter
-	Backup    backup.Backuper
-	Cfg       *config.Config
+	Partners       *application.PartnerService
+	Sections       *application.SectionService
+	Taxonomy       *application.TaxonomyService
+	BoardAuth      *application.BoardAuthorizationService
+	Forecasts      *application.ForecastService
+	Windows        *application.WindowService
+	Reports        *application.ReportService
+	Reconciliation *application.ReconciliationService
+	Exporter       report.ReportExporter
+	Backup         backup.Backuper
+	Cfg            *config.Config
 }
