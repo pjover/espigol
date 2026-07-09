@@ -40,7 +40,7 @@ func seedDraftTaxonomyYear(t *testing.T, q *sqlc.Queries, year int) {
 	}
 }
 
-// --- Tipus i subtipus panel ---
+// --- Taxonomia panel ---
 
 func TestTaxonomyPanel_ListsTypesAndSubtypesForYear(t *testing.T) {
 	deps, q := testDeps(t)
@@ -583,7 +583,7 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("i"))
+	_, cmd := p.Update(pKey("p"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err != nil {
 		t.Fatalf("import error: %v", msg.err)
@@ -609,7 +609,7 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 	}
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("i"))
+	_, cmd := p.Update(pKey("p"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err == nil {
 		t.Fatal("expected error importing into a non-OPEN year")
