@@ -24,12 +24,12 @@ func NewConcession(year int, groupCode, subtypeCode, concept string, requested, 
 	return Concession{year, groupCode, subtypeCode, concept, requested, granted}, nil
 }
 
-func (c Concession) Year() int              { return c.year }
-func (c Concession) GroupCode() string      { return c.groupCode }
-func (c Concession) SubtypeCode() string    { return c.subtypeCode }
-func (c Concession) Concept() string        { return c.concept }
-func (c Concession) RequestedTotal() Money  { return c.requestedTotal }
-func (c Concession) GrantedAmount() Money   { return c.grantedAmount }
+func (c Concession) Year() int             { return c.year }
+func (c Concession) GroupCode() string     { return c.groupCode }
+func (c Concession) SubtypeCode() string   { return c.subtypeCode }
+func (c Concession) Concept() string       { return c.concept }
+func (c Concession) RequestedTotal() Money { return c.requestedTotal }
+func (c Concession) GrantedAmount() Money  { return c.grantedAmount }
 
 // ConcessionForecast links one ExpenseForecast to its Concession group. The
 // (year, forecastID) pair is unique — a forecast belongs to at most one group.
