@@ -23,7 +23,6 @@ type ReconciliationInput struct {
 	Invoices    []model.Invoice            // aggregate: payments + links included
 	Subtypes    []model.ExpenseSubtype     // year-scoped
 	Types       []model.ExpenseType        // year-scoped (subtype→type→category lookup)
-	Partners    []model.Partner
 }
 
 // ReconciliationData is the JSON-serialisable snapshot produced by
@@ -250,7 +249,7 @@ func forecastsForGroup(
 			Executed:       fx.Executed,
 			Pending:        fx.Pending,
 			Assigned:       assigned[f.ID()],
-			Status:         statusFor(f, fx, g, true),
+			Status:         statusFor(f, fx, g),
 			Invoices:       fx.Invoices,
 		})
 	}
@@ -449,10 +448,8 @@ func assignForGroups(in ReconciliationInput, exec map[string]forecastExec) (map[
 // 3. OverExecuted   — paid Executed_i > GrossAmount_i.
 // 4. PartiallyJustified — group Executed < Granted.
 // 5. FullyJustified — group Executed ≥ Granted.
-// A forecast not attached to any group (data hygiene issue) is treated as
-// NoInvoice.
-func statusFor(f model.ExpenseForecast, fx forecastExec, g groupResult, hasGroup bool) ForecastReconStatus {
-	if len(fx.Invoices) == 0 || !hasGroup {
+func statusFor(f model.ExpenseForecast, fx forecastExec, g groupResult) ForecastReconStatus {
+	if len(fx.Invoices) == 0 {
 		return StatusNoInvoice
 	}
 	if !fx.Pending.IsZero() {

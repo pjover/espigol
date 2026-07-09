@@ -336,25 +336,6 @@ func (s *ReconciliationService) Compute(ctx context.Context, year int) (services
 			return err
 		}
 
-		// Load only the partners actually referenced by enabled forecasts.
-		partnerIDs := map[int]bool{}
-		for _, f := range forecasts {
-			if f.Enabled() {
-				partnerIDs[f.Partner().ID()] = true
-			}
-		}
-		partners := make([]model.Partner, 0, len(partnerIDs))
-		for id := range partnerIDs {
-			p, ok, err := r.Partners.FindByID(ctx, id)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return fmt.Errorf("partner %d referenced by forecast not found", id)
-			}
-			partners = append(partners, p)
-		}
-
 		out, err = services.ComputeReconciliation(services.ReconciliationInput{
 			Year:        year,
 			Forecasts:   forecasts,
@@ -363,7 +344,6 @@ func (s *ReconciliationService) Compute(ctx context.Context, year int) (services
 			Invoices:    invoices,
 			Subtypes:    subtypes,
 			Types:       types,
-			Partners:    partners,
 		})
 		return err
 	})
