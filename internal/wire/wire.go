@@ -83,6 +83,7 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		tui.NewSectionsPanel(deps),
 		tui.NewTaxonomyPanel(deps),
 		tui.NewForecastsPanel(deps),
+		tui.NewAjutsPanel(deps),
 		tui.NewAdminPanel(deps),
 	}
 
