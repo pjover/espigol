@@ -127,3 +127,54 @@ func newReconWorld(t *testing.T) reconWorld {
 
 	return reconWorld{tx: persistence.NewTxManager(conn), forecastID: f.ID()}
 }
+
+// newReconWorldWithForecasts seeds a 2025 window + subtype a6 + partner and
+// creates forecasts until the given ids exist (CP250nn are allocated in order).
+func newReconWorldWithForecasts(t *testing.T, ids ...string) reconWorld {
+	t.Helper()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	q := sqlc.New(conn)
+	ctx := context.Background()
+
+	win := persistence.NewWindowRepository(q)
+	tax := persistence.NewTaxonomyRepository(q)
+	pr := persistence.NewPartnerRepository(q)
+	fr := persistence.NewForecastRepository(conn, q)
+
+	w, _ := model.NewSubmissionWindow(2025, model.WindowClosed, nil, nil,
+		time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC), model.MoneyOf(30000), model.MoneyOf(70000))
+	_ = win.Save(ctx, w)
+	typ, _ := model.NewExpenseType(2025, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, typ)
+	st, _ := model.NewExpenseSubtype(2025, "a6", "[a6]", "A")
+	_ = tax.SaveSubtype(ctx, st)
+	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	_ = pr.Save(ctx, p7)
+
+	// Allocate forecasts CP25001.. until all requested ids are present.
+	want := map[string]bool{}
+	for _, id := range ids {
+		want[id] = true
+	}
+	have := map[string]bool{}
+	for len(have) < len(want) {
+		uf, _ := model.NewUnsavedExpenseForecast(p7, "f", "d", model.MoneyOf(6940), model.ZeroMoney(),
+			nil, planned, 2025, "a6", model.NewCommonScope(), planned, true)
+		f, err := fr.Create(ctx, uf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want[f.ID()] {
+			have[f.ID()] = true
+		}
+		if f.ID() > "CP25099" { // safety stop
+			t.Fatalf("could not allocate ids %v (got up to %s)", ids, f.ID())
+		}
+	}
+	return reconWorld{tx: persistence.NewTxManager(conn), forecastID: ids[0]}
+}
