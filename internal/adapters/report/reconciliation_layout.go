@@ -136,7 +136,7 @@ func concessionBlocks(cn services.ConcessionReconciliation) Block {
 	}
 	return Table{
 		Title:   cn.Concept + " (Grup " + cn.GroupCode + ")",
-		Headers: []string{"Prevision", "Soci", "Concepte", "Previst", "Executat", "Assignat", "Estat"},
+		Headers: []string{"Previsió", "Soci", "Concepte", "Previst", "Executat", "Assignat", "Estat"},
 		Widths:  []uint{2, 1, 2, 2, 2, 2, 1},
 		Rows:    rows,
 	}
