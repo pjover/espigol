@@ -305,6 +305,46 @@ func (s *ReconciliationService) DeleteInvoice(ctx context.Context, invoiceID int
 	})
 }
 
+// computeReconciliationData reads the year's forecasts/concessions/links/
+// invoices/subtypes/types and runs services.ComputeReconciliation. Shared by
+// Compute and GenerateReport so the inputs feeding the algorithm never drift
+// between the two callers.
+func computeReconciliationData(ctx context.Context, r ports.RepoSet, year int) (services.ReconciliationData, error) {
+	forecasts, err := r.Forecasts.ListByYear(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	concessions, err := r.Concessions.ListByYear(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	links, err := r.Concessions.ListForecastLinksByYear(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	invoices, err := r.Invoices.ListByYear(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	subtypes, err := r.Taxonomy.ListSubtypes(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	types, err := r.Taxonomy.ListTypes(ctx, year)
+	if err != nil {
+		return services.ReconciliationData{}, err
+	}
+	return services.ComputeReconciliation(services.ReconciliationInput{
+		Year:        year,
+		Forecasts:   forecasts,
+		Concessions: concessions,
+		Links:       links,
+		Invoices:    invoices,
+		Subtypes:    subtypes,
+		Types:       types,
+	})
+}
+
 // Compute produces the year's reconciliation snapshot: per-forecast
 // AssignedSubsidy plus subtype/category roll-ups and category-net deviations.
 // Read-only — runs inside a single WithinTx for a consistent snapshot but
@@ -313,40 +353,8 @@ func (s *ReconciliationService) DeleteInvoice(ctx context.Context, invoiceID int
 func (s *ReconciliationService) Compute(ctx context.Context, year int) (services.ReconciliationData, error) {
 	var out services.ReconciliationData
 	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
-		forecasts, err := r.Forecasts.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		concessions, err := r.Concessions.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		links, err := r.Concessions.ListForecastLinksByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		invoices, err := r.Invoices.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		subtypes, err := r.Taxonomy.ListSubtypes(ctx, year)
-		if err != nil {
-			return err
-		}
-		types, err := r.Taxonomy.ListTypes(ctx, year)
-		if err != nil {
-			return err
-		}
-
-		out, err = services.ComputeReconciliation(services.ReconciliationInput{
-			Year:        year,
-			Forecasts:   forecasts,
-			Concessions: concessions,
-			Links:       links,
-			Invoices:    invoices,
-			Subtypes:    subtypes,
-			Types:       types,
-		})
+		var err error
+		out, err = computeReconciliationData(ctx, r, year)
 		return err
 	})
 	return out, err
@@ -357,39 +365,7 @@ func (s *ReconciliationService) Compute(ctx context.Context, year int) (services
 func (s *ReconciliationService) GenerateReport(ctx context.Context, year int) (model.ReconciliationSnapshot, error) {
 	var snap model.ReconciliationSnapshot
 	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
-		forecasts, err := r.Forecasts.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		concessions, err := r.Concessions.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		links, err := r.Concessions.ListForecastLinksByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		invoices, err := r.Invoices.ListByYear(ctx, year)
-		if err != nil {
-			return err
-		}
-		subtypes, err := r.Taxonomy.ListSubtypes(ctx, year)
-		if err != nil {
-			return err
-		}
-		types, err := r.Taxonomy.ListTypes(ctx, year)
-		if err != nil {
-			return err
-		}
-		rd, err := services.ComputeReconciliation(services.ReconciliationInput{
-			Year:        year,
-			Forecasts:   forecasts,
-			Concessions: concessions,
-			Links:       links,
-			Invoices:    invoices,
-			Subtypes:    subtypes,
-			Types:       types,
-		})
+		rd, err := computeReconciliationData(ctx, r, year)
 		if err != nil {
 			return err
 		}
