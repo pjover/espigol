@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/pjover/espigol/internal/adapters/importer"
+	"github.com/pjover/espigol/internal/adapters/system"
 	"github.com/pjover/espigol/internal/application"
 )
 
 func TestReconciliation2025Fixture_ImportsAndBundles(t *testing.T) {
 	world := newReconWorldWithForecasts(t, "CP25008", "CP25009")
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 
 	in, err := importer.LoadReconciliation(filepath.Join("testdata", "reconciliation-2025-sample.json"), 2025)

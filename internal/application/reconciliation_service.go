@@ -59,11 +59,13 @@ type ReconciliationImportResult struct {
 }
 
 type ReconciliationService struct {
-	tx ports.TxManager
+	tx       ports.TxManager
+	clock    ports.Clock
+	renderer ports.ReconciliationRenderer
 }
 
-func NewReconciliationService(tx ports.TxManager) *ReconciliationService {
-	return &ReconciliationService{tx: tx}
+func NewReconciliationService(tx ports.TxManager, clock ports.Clock, renderer ports.ReconciliationRenderer) *ReconciliationService {
+	return &ReconciliationService{tx: tx, clock: clock, renderer: renderer}
 }
 
 func strOrNil(s string) *string {
@@ -348,4 +350,75 @@ func (s *ReconciliationService) Compute(ctx context.Context, year int) (services
 		return err
 	})
 	return out, err
+}
+
+// GenerateReport computes the year's reconciliation, renders the PDF, and
+// upserts a reconciliation_snapshot row. Returns the persisted aggregate.
+func (s *ReconciliationService) GenerateReport(ctx context.Context, year int) (model.ReconciliationSnapshot, error) {
+	var snap model.ReconciliationSnapshot
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		forecasts, err := r.Forecasts.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		concessions, err := r.Concessions.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		links, err := r.Concessions.ListForecastLinksByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		invoices, err := r.Invoices.ListByYear(ctx, year)
+		if err != nil {
+			return err
+		}
+		subtypes, err := r.Taxonomy.ListSubtypes(ctx, year)
+		if err != nil {
+			return err
+		}
+		types, err := r.Taxonomy.ListTypes(ctx, year)
+		if err != nil {
+			return err
+		}
+		rd, err := services.ComputeReconciliation(services.ReconciliationInput{
+			Year:        year,
+			Forecasts:   forecasts,
+			Concessions: concessions,
+			Links:       links,
+			Invoices:    invoices,
+			Subtypes:    subtypes,
+			Types:       types,
+		})
+		if err != nil {
+			return err
+		}
+		jsonStr, err := ReconciliationSnapshotToJSON(rd)
+		if err != nil {
+			return err
+		}
+		at := s.clock.Now()
+		pdf, err := s.renderer.Render(rd, at)
+		if err != nil {
+			return err
+		}
+		snap, err = model.NewReconciliationSnapshot(year, at, jsonStr, pdf)
+		if err != nil {
+			return err
+		}
+		return r.ReconciliationSnapshots.Save(ctx, snap)
+	})
+	return snap, err
+}
+
+// LatestSnapshot returns the stored snapshot for a year, or (_, false, nil) if none.
+func (s *ReconciliationService) LatestSnapshot(ctx context.Context, year int) (model.ReconciliationSnapshot, bool, error) {
+	var snap model.ReconciliationSnapshot
+	var found bool
+	err := s.tx.WithinTx(ctx, func(r ports.RepoSet) error {
+		var err error
+		snap, found, err = r.ReconciliationSnapshots.FindByYear(ctx, year)
+		return err
+	})
+	return snap, found, err
 }

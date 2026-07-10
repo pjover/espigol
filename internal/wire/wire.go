@@ -62,6 +62,12 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 	txm := persistence.NewTxManager(conn)
 
 	pdf := reportadapter.PDFRenderer{BusinessName: cfg.BusinessName, LogoPath: cfg.LogoPath}
+	// Stopgap: real PDF renderer, but not yet wired to a TUI key. Task 9 adds
+	// the "g" keybinding that drives ReconciliationService.GenerateReport.
+	reconciliationRenderer := reportadapter.ReconciliationPDFRenderer{
+		BusinessName: cfg.BusinessName,
+		LogoPath:     cfg.LogoPath,
+	}
 
 	deps := tui.Deps{
 		Partners:       application.NewPartnerService(txm, clock, cfg.Admin.Email),
@@ -71,7 +77,7 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		Forecasts:      application.NewForecastService(txm, clock),
 		Windows:        application.NewWindowService(txm, pdf, clock),
 		Reports:        application.NewReportService(txm),
-		Reconciliation: application.NewReconciliationService(txm),
+		Reconciliation: application.NewReconciliationService(txm, clock, reconciliationRenderer),
 		Exporter:       reportadapter.NewReportExporter(pdf),
 		Backup:         backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
 		Cfg:            cfg,
