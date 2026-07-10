@@ -114,6 +114,13 @@ type PartnerSection struct {
 	SectionCode string
 }
 
+type ReconciliationSnapshot struct {
+	Year         int64
+	GeneratedAt  string
+	SnapshotJson string
+	Pdf          []byte
+}
+
 type Report struct {
 	ID           int64
 	Year         int64
