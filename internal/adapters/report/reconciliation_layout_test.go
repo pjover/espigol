@@ -169,16 +169,29 @@ func TestBuildReconciliationLayout_TwoCategoriesHavePageBreak(t *testing.T) {
 	rd.Categories = append(rd.Categories, rd.Categories[0])
 	blocks := buildReconciliationLayout(rd)
 
-	// find PageBreak between the two categories
-	found := false
-	for _, b := range blocks {
+	// count PageBreaks and find the index
+	var pageBreakIndex int
+	pageBreakCount := 0
+	for i, b := range blocks {
 		if _, ok := b.(PageBreak); ok {
-			found = true
-			break
+			pageBreakIndex = i
+			pageBreakCount++
 		}
 	}
-	if !found {
-		t.Error("expected PageBreak between two categories")
+
+	// verify exactly one PageBreak
+	if pageBreakCount != 1 {
+		t.Errorf("expected exactly 1 PageBreak, found %d", pageBreakCount)
+	}
+
+	// verify PageBreak is not at the start (index 0)
+	if pageBreakIndex == 0 {
+		t.Error("PageBreak should not be at index 0 (before all content)")
+	}
+
+	// verify PageBreak is not at the end (len(blocks)-1)
+	if pageBreakIndex == len(blocks)-1 {
+		t.Error("PageBreak should not be at the last index (after all content)")
 	}
 }
 
