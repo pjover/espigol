@@ -145,7 +145,7 @@ func TestReconciliationService_Compute_HappyPath(t *testing.T) {
 		Concessions: []application.ConcessionInput{{
 			Year: 2025, GroupCode: "A6-01", SubtypeCode: "a6", Concept: "Adob",
 			RequestedTotal: model.MoneyOf(500), GrantedAmount: model.MoneyOf(500),
-			ForecastIDs:    []string{world.forecastID},
+			ForecastIDs: []string{world.forecastID},
 		}},
 		Invoices: []application.InvoiceInput{{
 			Year: 2025, Issuer: "Sup", Nif: "B1", Number: "F1",

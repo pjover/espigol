@@ -10,7 +10,7 @@
 
 ## Goal
 
-Phase 2 stops at a computed `ReconciliationData` snapshot in memory. Phase 3 makes that snapshot real: writes it to a `reconciliation_snapshot` row, renders it to a PDF and a Markdown file on disk (both landing in `~/.config/espigol/reports/`), and gives the admin a single TUI keystroke to regenerate it as the year's invoices roll in. It closes the workbook's Part B.3 loop: the admin now sees per-forecast `Subvenció assignada` in a document they can hand to the inspector, plus the group / subtype / category roll-ups that the workbook's `Executat!Resum` and `Desviacions` sheets used to show.
+Phase 2 stops at a computed `ReconciliationData` snapshot in memory. Phase 3 makes that snapshot real: writes it to a `reconciliation_snapshot` row, renders it to a PDF and a Markdown file on disk (both landing in `$ESPIGOL_HOME/reports/`), and gives the admin a single TUI keystroke to regenerate it as the year's invoices roll in. It closes the workbook's Part B.3 loop: the admin now sees per-forecast `Subvenció assignada` in a document they can hand to the inspector, plus the group / subtype / category roll-ups that the workbook's `Executat!Resum` and `Desviacions` sheets used to show.
 
 ## Decomposition context
 

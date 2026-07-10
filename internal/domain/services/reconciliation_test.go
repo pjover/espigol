@@ -405,4 +405,3 @@ func TestReconciliation_DisabledForecastsSkipped(t *testing.T) {
 		t.Errorf("Concession Assigned = %s, want 100.00", cn.Assigned.String())
 	}
 }
-

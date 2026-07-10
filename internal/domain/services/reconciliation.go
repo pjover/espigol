@@ -55,14 +55,14 @@ type SubtypeReconciliation struct {
 }
 
 type ConcessionReconciliation struct {
-	GroupCode  string                    `json:"groupCode"`
-	Concept    string                    `json:"concept"`
-	Requested  model.Money               `json:"requested"`
-	Granted    model.Money               `json:"granted"`
-	Executed   model.Money               `json:"executed"`
-	Assigned   model.Money               `json:"assigned"`
-	Difference model.Money               `json:"difference"` // Granted − Executed
-	Forecasts  []ForecastReconciliation  `json:"forecasts"`
+	GroupCode  string                   `json:"groupCode"`
+	Concept    string                   `json:"concept"`
+	Requested  model.Money              `json:"requested"`
+	Granted    model.Money              `json:"granted"`
+	Executed   model.Money              `json:"executed"`
+	Assigned   model.Money              `json:"assigned"`
+	Difference model.Money              `json:"difference"` // Granted − Executed
+	Forecasts  []ForecastReconciliation `json:"forecasts"`
 }
 
 type ForecastReconciliation struct {
@@ -463,4 +463,3 @@ func statusFor(f model.ExpenseForecast, fx forecastExec, g groupResult) Forecast
 	}
 	return StatusFullyJustified
 }
-
