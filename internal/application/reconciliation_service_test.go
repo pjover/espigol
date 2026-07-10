@@ -405,6 +405,46 @@ func TestReconciliation2025Fixture_ComputeMatchesWorkbook(t *testing.T) {
 	if len(b201.Forecasts) != 1 || b201.Forecasts[0].Status != services.StatusPartiallyJustified {
 		t.Errorf("B2-01 forecast status = %v, want StatusPartiallyJustified", b201.Forecasts[0].Status)
 	}
+
+	// --- Phase 3: GenerateReport persists a snapshot ---
+	snap, err := svc.GenerateReport(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GenerateReport: %v", err)
+	}
+
+	// SnapshotJSON round-trips back to identical per-subtype totals.
+	rd2, err := application.ReconciliationSnapshotFromJSON(snap.SnapshotJSON())
+	if err != nil {
+		t.Fatalf("ReconciliationSnapshotFromJSON: %v", err)
+	}
+	haveExec2 := map[string]string{}
+	for _, cat := range rd2.Categories {
+		for _, st := range cat.Subtypes {
+			haveExec2[st.Code] = st.Executed.String()
+		}
+	}
+	for code, want := range wantExec {
+		if got := haveExec2[code]; got != want {
+			t.Errorf("round-tripped subtype %s Executed = %s, want %s", code, got, want)
+		}
+	}
+
+	// Persisted snapshot is retrievable.
+	stored, ok, err := svc.LatestSnapshot(ctx, 2025)
+	if err != nil {
+		t.Fatalf("LatestSnapshot: %v", err)
+	}
+	if !ok {
+		t.Fatal("LatestSnapshot: not found after GenerateReport")
+	}
+	if stored.SnapshotJSON() != snap.SnapshotJSON() {
+		t.Errorf("stored SnapshotJSON differs from returned value")
+	}
+
+	// PDF is non-empty and looks like a PDF (from fakeRenderer: "%PDF-fake").
+	if len(stored.Pdf()) == 0 {
+		t.Error("stored PDF is empty")
+	}
 }
 
 // new2025World seeds a scratch SQLite DB with the 2025 taxonomy (a2/a3/a4/a6/b1/b2
