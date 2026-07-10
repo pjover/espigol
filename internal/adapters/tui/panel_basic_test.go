@@ -46,16 +46,20 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 	clock := pbFixedClock{t: time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)}
 
 	exporter := appreport.NewReportExporter(appreport.PDFRenderer{BusinessName: "Test"})
+	reconRenderer := appreport.ReconciliationPDFRenderer{BusinessName: "Test"}
+	reconExporter := appreport.NewReconciliationExporter(reconRenderer, appreport.ReconciliationMarkdownRenderer{})
 
 	deps := Deps{
-		Partners:  application.NewPartnerService(txm, clock, testAdminEmail),
-		Sections:  application.NewSectionService(txm, clock, testAdminEmail),
-		Taxonomy:  application.NewTaxonomyService(txm, clock, testAdminEmail),
-		Forecasts: application.NewForecastService(txm, clock),
-		Windows:   application.NewWindowService(txm, appreport.NoopRenderer{}, clock),
-		Reports:   application.NewReportService(txm),
-		Exporter:  exporter,
-		Backup:    backup.New(conn, dbPath, filepath.Join(home, "backups"), clock),
+		Partners:               application.NewPartnerService(txm, clock, testAdminEmail),
+		Sections:               application.NewSectionService(txm, clock, testAdminEmail),
+		Taxonomy:               application.NewTaxonomyService(txm, clock, testAdminEmail),
+		Forecasts:              application.NewForecastService(txm, clock),
+		Windows:                application.NewWindowService(txm, appreport.NoopRenderer{}, clock),
+		Reports:                application.NewReportService(txm),
+		Reconciliation:         application.NewReconciliationService(txm, clock, reconRenderer),
+		Exporter:               exporter,
+		ReconciliationExporter: reconExporter,
+		Backup:                 backup.New(conn, dbPath, filepath.Join(home, "backups"), clock),
 		Cfg: &config.Config{
 			Home:      home,
 			DBPath:    dbPath,

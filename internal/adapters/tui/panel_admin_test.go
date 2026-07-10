@@ -554,6 +554,51 @@ func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 	}
 }
 
+// TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist drives the
+// "g" key end-to-end: real ReconciliationService.GenerateReport over a real
+// temp DB, then real ReconciliationExporter.Export, asserting the PDF+MD
+// files actually land on disk. Unlike the "f" report, there is no window-state
+// gate, so an OPEN window (or any state) works.
+func TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist(t *testing.T) {
+	deps, q := testDeps(t)
+	ctx := context.Background()
+	seedWindow(t, q, 2026, model.WindowOpen)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2026, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2026, "a1", "[a1]", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+
+	p := NewAdminPanel(deps)
+	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
+	if cmd != nil {
+		runCmd(t, cmd)
+	}
+
+	_, cmd = p.Update(pKey("g"))
+	msg := runCmd(t, cmd)
+	genMsg, ok := msg.(reconciliationGeneratedMsg)
+	if !ok {
+		t.Fatalf("expected reconciliationGeneratedMsg, got %T", msg)
+	}
+	if genMsg.err != nil {
+		t.Fatalf("generateReconciliationCmd error: %v", genMsg.err)
+	}
+	p, _ = p.Update(genMsg)
+
+	outputDir := deps.Cfg.OutputDir
+	for _, name := range []string{"Conciliació ajuts 2026.pdf", "Conciliació ajuts 2026.md"} {
+		if _, err := os.Stat(filepath.Join(outputDir, name)); err != nil {
+			t.Errorf("expected %s to exist: %v", name, err)
+		}
+	}
+
+	detail := p.Detail()
+	if !strings.Contains(detail, "2026") || !strings.Contains(detail, "pdf") {
+		t.Errorf("Detail() = %q, want it to show the written paths", detail)
+	}
+}
+
 func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()

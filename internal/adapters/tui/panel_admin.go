@@ -70,6 +70,13 @@ type backupDoneMsg struct {
 	err  error
 }
 
+// reconciliationGeneratedMsg carries the outcome of generateReconciliationCmd.
+type reconciliationGeneratedMsg struct {
+	year  int
+	paths []string
+	err   error
+}
+
 // importForecastsCmd loads Home/import/<year>-forecasts.json and replaces the
 // year's forecasts via AdminImport (which requires an OPEN window).
 func importForecastsCmd(deps Deps, year int) tea.Cmd {
@@ -118,6 +125,25 @@ func backupCmd(deps Deps) tea.Cmd {
 	return func() tea.Msg {
 		path, err := deps.Backup.Backup(context.Background())
 		return backupDoneMsg{path: path, err: err}
+	}
+}
+
+// generateReconciliationCmd computes the year's reconciliation report via
+// ReconciliationService.GenerateReport and exports the resulting snapshot to
+// PDF+MD via ReconciliationExporter. No window-state gate: reconciliation
+// reports can be generated in any window state (unlike the "f" forecast
+// report, which depends on DRAFT/OPEN/CLOSED to pick Export vs ExportData).
+func generateReconciliationCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		if deps.Reconciliation == nil || deps.ReconciliationExporter == nil || deps.Cfg == nil {
+			return reconciliationGeneratedMsg{year: year, err: fmt.Errorf("conciliació no disponible")}
+		}
+		snap, err := deps.Reconciliation.GenerateReport(context.Background(), year)
+		if err != nil {
+			return reconciliationGeneratedMsg{year: year, err: err}
+		}
+		paths, err := deps.ReconciliationExporter.Export(snap, deps.Cfg.OutputDir)
+		return reconciliationGeneratedMsg{year: year, paths: paths, err: err}
 	}
 }
 
@@ -229,6 +255,19 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, nil
 
+	case reconciliationGeneratedMsg:
+		if msg.year != p.year {
+			return p, nil
+		}
+		if msg.err != nil {
+			p.result = &adminResult{err: msg.err}
+		} else if len(msg.paths) == 0 {
+			p.result = &adminResult{text: "Informe de conciliació generat (cap fitxer)."}
+		} else {
+			p.result = &adminResult{text: "Informe de conciliació generat:\n  " + strings.Join(msg.paths, "\n  ")}
+		}
+		return p, nil
+
 	case backupDoneMsg:
 		if msg.err != nil {
 			p.result = &adminResult{err: msg.err}
@@ -255,6 +294,8 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
 	case "f":
 		return p, p.findWindowStateCmd(p.year)
+	case "g":
+		return p, generateReconciliationCmd(p.deps, p.year)
 	case "p":
 		return p, importForecastsCmd(p.deps, p.year)
 	case "c":
@@ -303,12 +344,13 @@ func (p adminPanel) Detail() string {
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	return dimStyle.Render("f: informe · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
+	return dimStyle.Render("f: informe · g: conciliació · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
 }
 
 func (p adminPanel) Actions() []Action {
 	return []Action{
 		{Key: "f", Label: "genera informe"},
+		{Key: "g", Label: "genera informe de conciliació"},
 		{Key: "p", Label: "importa previsions"},
 		{Key: "c", Label: "importa concessions i factures"},
 		{Key: "b", Label: "còpia de seguretat"},
