@@ -5,6 +5,7 @@ import (
 
 	"github.com/pjover/espigol/internal/domain/model"
 	"github.com/pjover/espigol/internal/domain/model/report"
+	"github.com/pjover/espigol/internal/domain/services"
 )
 
 func TestSnapshotRoundTrip(t *testing.T) {
@@ -50,4 +51,38 @@ func mustMoney(t *testing.T, s string) model.Money {
 		t.Fatal(err)
 	}
 	return m
+}
+
+func TestReconciliationSnapshotRoundTrip(t *testing.T) {
+	rd := services.ReconciliationData{
+		Year: 2025,
+		Categories: []services.CategoryReconciliation{
+			{
+				Category:     model.CategoryCurrent,
+				NetDeviation: model.MoneyOf(100),
+			},
+		},
+	}
+
+	s, err := ReconciliationSnapshotToJSON(rd)
+	if err != nil {
+		t.Fatalf("ToJSON: %v", err)
+	}
+	if s == "" {
+		t.Fatal("ToJSON returned empty string")
+	}
+
+	got, err := ReconciliationSnapshotFromJSON(s)
+	if err != nil {
+		t.Fatalf("FromJSON: %v", err)
+	}
+	if got.Year != 2025 {
+		t.Errorf("Year = %d, want 2025", got.Year)
+	}
+	if len(got.Categories) != 1 {
+		t.Fatalf("Categories len = %d, want 1", len(got.Categories))
+	}
+	if got.Categories[0].NetDeviation.String() != "100.00" {
+		t.Errorf("NetDeviation = %s, want 100.00", got.Categories[0].NetDeviation)
+	}
 }
