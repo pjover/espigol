@@ -7,6 +7,35 @@ TUI and server for managing the annual subsidy budget of the Cooperativa d'Estel
 
 Configuration and data live in `~/.config/espigol` by default, overridable with `$ESPIGOL_HOME`.
 
+`$ESPIGOL_HOME/config.yaml` example (all keys are optional — defaults shown):
+
+```yaml
+business:
+  name: "Cooperativa d'Estellencs"
+
+server:
+  port: 8080
+
+# Relative to $ESPIGOL_HOME.  Omit to use the defaults below.
+output:
+  dir: "reports"      # → $ESPIGOL_HOME/reports
+backup:
+  dir: "backups"      # → $ESPIGOL_HOME/backups
+logo:
+  path: "logo.png"    # → $ESPIGOL_HOME/logo.png
+
+oauth:
+  client_id: ""
+  client_secret: ""
+  redirect_url: ""
+
+admin:
+  email: "admin@espigol"
+```
+
+All keys can be overridden with `ESPIGOL_<KEY>` environment variables
+(e.g. `ESPIGOL_SERVER_PORT=9090`, `ESPIGOL_ADMIN_EMAIL=admin@example.org`).
+
 See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for the phased implementation plans.
 
 ## Admin panel

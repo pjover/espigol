@@ -113,7 +113,10 @@ structs inside `persistence/`; mappers translate at the port boundary.
 (SQLite via `modernc.org/sqlite`, pure Go/no CGO, opened WAL + busy_timeout so the TUI and
 server can safely touch the same file concurrently), `config.yaml`, `logo.png`, `reports/`,
 `backups/`, `import/`. Config keys can be overridden by `ESPIGOL_<KEY>` env vars (viper);
-submission-window limits live in the DB, not config.
+submission-window limits live in the DB, not config. Path values in `config.yaml`
+(`output.dir`, `backup.dir`, `logo.path`) accept relative paths (resolved against
+`$ESPIGOL_HOME`) or absolute paths; an empty/omitted key falls back to the
+`$ESPIGOL_HOME`-relative default.
 
 ### `private/`
 

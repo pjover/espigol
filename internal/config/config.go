@@ -72,17 +72,22 @@ func defaultConfigYAML(_ string) []byte {
 # All keys can be overridden with ESPIGOL_<KEY> environment variables
 # (e.g. ESPIGOL_SERVER_PORT=9090, ESPIGOL_ADMIN_EMAIL=admin@example.org).
 #
-# Paths default to $ESPIGOL_HOME:
-#   output.dir  → $ESPIGOL_HOME/reports
-#   backup.dir  → $ESPIGOL_HOME/backups
-#   logo.path   → $ESPIGOL_HOME/logo.png
-# Uncomment and set below to override.
+# Paths below are relative to $ESPIGOL_HOME or absolute if you prefer.
 
 business:
   name: "Cooperativa d'Estellencs"
 
 server:
   port: 8080
+
+output:
+  dir: "reports"
+
+backup:
+  dir: "backups"
+
+logo:
+  path: "logo.png"
 
 oauth:
   client_id: ""
@@ -124,21 +129,9 @@ func Load(home string) (*Config, error) {
 		}
 	}
 
-	// For home-derived paths, empty string in the config means "use the
-	// $ESPIGOL_HOME-relative default". This lets a synced config.yaml carry
-	// the key without pinning an absolute path from another machine.
-	outputDir := v.GetString("output.dir")
-	if outputDir == "" {
-		outputDir = filepath.Join(home, "reports")
-	}
-	backupDir := v.GetString("backup.dir")
-	if backupDir == "" {
-		backupDir = filepath.Join(home, "backups")
-	}
-	logoPath := v.GetString("logo.path")
-	if logoPath == "" {
-		logoPath = filepath.Join(home, "logo.png")
-	}
+	outputDir := resolvePath(home, v.GetString("output.dir"), "reports")
+	backupDir := resolvePath(home, v.GetString("backup.dir"), "backups")
+	logoPath := resolvePath(home, v.GetString("logo.path"), "logo.png")
 
 	cfg := &Config{
 		Home:         home,
@@ -155,4 +148,16 @@ func Load(home string) (*Config, error) {
 	cfg.OAuth.RedirectURL = v.GetString("oauth.redirect_url")
 	cfg.Admin.Email = v.GetString("admin.email")
 	return cfg, nil
+}
+
+// resolvePath resolves a config path value against home.
+// Empty/omitted → home/rel (default). Relative → home/val. Absolute → val.
+func resolvePath(home, val, rel string) string {
+	if val == "" {
+		return filepath.Join(home, rel)
+	}
+	if filepath.IsAbs(val) {
+		return val
+	}
+	return filepath.Join(home, val)
 }
