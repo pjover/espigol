@@ -595,7 +595,7 @@ func TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist(t *testing.T
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("g"))
+	_, cmd = p.Update(pKey("i"))
 	msg := runCmd(t, cmd)
 	genMsg, ok := msg.(reconciliationGeneratedMsg)
 	if !ok {
@@ -648,7 +648,7 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("p"))
+	_, cmd := p.Update(pKey("j"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err != nil {
 		t.Fatalf("import error: %v", msg.err)
@@ -674,7 +674,7 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 	}
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("p"))
+	_, cmd := p.Update(pKey("j"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err == nil {
 		t.Fatal("expected error importing into a non-OPEN year")
@@ -693,7 +693,7 @@ func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
 func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
 	deps, _ := testDeps(t)
 	p := NewAdminPanel(deps)
-	_, cmd := p.Update(pKey("b"))
+	_, cmd := p.Update(pKey("c"))
 	msg := runCmd(t, cmd).(backupDoneMsg)
 	if msg.err != nil {
 		t.Fatalf("backup error: %v", msg.err)

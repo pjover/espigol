@@ -15,10 +15,10 @@ import (
 )
 
 // adminPanel is the "Admin" panel (formerly "Informes"). It operates on the
-// selected-year context and offers: h generate report, p import forecasts
-// (requires OPEN window), c import concessions + invoices / ajuts (no window
-// gate), b backup the database, r restore it. It also lists which years have a
-// stored Report, for context.
+// selected-year context and offers: h forecast report, i reconciliation
+// report, j import forecasts (requires OPEN window), k import concessions +
+// invoices / ajuts (no window gate), c backup the database, r restore it. It
+// also lists which years have a stored Report, for context.
 type adminPanel struct {
 	deps  Deps
 	year  int
@@ -292,13 +292,13 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
 	case "h":
 		return p, p.findWindowStateCmd(p.year)
-	case "g":
+	case "i":
 		return p, generateReconciliationCmd(p.deps, p.year)
-	case "p":
+	case "j":
 		return p, importForecastsCmd(p.deps, p.year)
-	case "c":
+	case "k":
 		return p, importReconciliationCmd(p.deps, p.year)
-	case "b":
+	case "c":
 		return p, backupCmd(p.deps)
 	case "r":
 		files, err := p.deps.Backup.ListBackups()
@@ -334,16 +334,16 @@ func (p adminPanel) Detail() string {
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	return dimStyle.Render("h: informe previsions · g: conciliació · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
+	return dimStyle.Render("h: informe previsions · i: informe conciliació · j: importa previsions · k: importa concessions i factures · c: còpia · r: restaura")
 }
 
 func (p adminPanel) Actions() []Action {
 	return []Action{
 		{Key: "h", Label: "informe previsions"},
-		{Key: "g", Label: "genera informe de conciliació"},
-		{Key: "p", Label: "importa previsions"},
-		{Key: "c", Label: "importa concessions i factures"},
-		{Key: "b", Label: "còpia de seguretat"},
+		{Key: "i", Label: "informe conciliació"},
+		{Key: "j", Label: "importa previsions"},
+		{Key: "k", Label: "importa concessions i factures"},
+		{Key: "c", Label: "còpia"},
 		{Key: "r", Label: "restaura"},
 	}
 }
