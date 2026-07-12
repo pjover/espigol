@@ -26,19 +26,18 @@ type adminPanel struct {
 
 	years    []int // years with a stored report, ascending
 	yearsErr error // error from loading the years-with-reports list
-
-	result *adminResult
-}
-
-// adminResult holds the outcome of the last f/i/b/r action, rendered by Detail.
-type adminResult struct {
-	text string
-	err  error
 }
 
 // NewAdminPanel builds the Admin panel.
 func NewAdminPanel(deps Deps) Panel {
 	return adminPanel{deps: deps}
+}
+
+// resultModalCmd opens the info modal showing an action's outcome; onClose (if
+// set) runs when the user dismisses it (e.g. reload the years-with-reports
+// list). This replaces the old lingering Detail() result text.
+func resultModalCmd(message string, onClose tea.Cmd) tea.Cmd {
+	return openModalCmd(newInfoModal(message, onClose))
 }
 
 func (p adminPanel) Title() string { return "Admin" }
@@ -214,8 +213,7 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 			return p, nil
 		}
 		if !msg.found {
-			p.result = &adminResult{err: fmt.Errorf("cap any %d trobat", p.year)}
-			return p, nil
+			return p, resultModalCmd(errDetail(fmt.Errorf("cap any %d trobat", p.year)), nil)
 		}
 		p.state = msg.state
 		return p, generateReportCmd(p.deps, p.year, p.state)
@@ -224,65 +222,65 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		if msg.year != p.year {
 			return p, nil
 		}
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else if len(msg.paths) == 0 {
-			p.result = &adminResult{text: "Informe generat (cap fitxer)."}
-		} else {
-			p.result = &adminResult{text: "Informe generat:\n  " + strings.Join(msg.paths, "\n  ")}
+		var text string
+		switch {
+		case msg.err != nil:
+			text = errDetail(msg.err)
+		case len(msg.paths) == 0:
+			text = "Informe generat (cap fitxer)."
+		default:
+			text = "Informe generat:\n  " + strings.Join(msg.paths, "\n  ")
 		}
-		return p, p.loadYearsCmd()
+		return p, resultModalCmd(text, p.loadYearsCmd())
 
 	case forecastsImportedMsg:
 		if msg.year != p.year {
 			return p, nil
 		}
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else {
-			p.result = &adminResult{text: fmt.Sprintf("Importats %d (esborrats %d)", msg.result.Created, msg.result.Deleted)}
+		text := errDetail(msg.err)
+		if msg.err == nil {
+			text = fmt.Sprintf("Importats %d (esborrats %d)", msg.result.Created, msg.result.Deleted)
 		}
-		return p, p.loadYearsCmd()
+		return p, resultModalCmd(text, p.loadYearsCmd())
 
 	case reconciliationImportedMsg:
 		if msg.year != p.year {
 			return p, nil
 		}
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else {
-			p.result = &adminResult{text: msg.result}
+		text := errDetail(msg.err)
+		if msg.err == nil {
+			text = msg.result
 		}
-		return p, nil
+		return p, resultModalCmd(text, nil)
 
 	case reconciliationGeneratedMsg:
 		if msg.year != p.year {
 			return p, nil
 		}
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else if len(msg.paths) == 0 {
-			p.result = &adminResult{text: "Informe de conciliació generat (cap fitxer)."}
-		} else {
-			p.result = &adminResult{text: "Informe de conciliació generat:\n  " + strings.Join(msg.paths, "\n  ")}
+		var text string
+		switch {
+		case msg.err != nil:
+			text = errDetail(msg.err)
+		case len(msg.paths) == 0:
+			text = "Informe de conciliació generat (cap fitxer)."
+		default:
+			text = "Informe de conciliació generat:\n  " + strings.Join(msg.paths, "\n  ")
 		}
-		return p, nil
+		return p, resultModalCmd(text, nil)
 
 	case backupDoneMsg:
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else {
-			p.result = &adminResult{text: "Còpia de seguretat creada:\n  " + msg.path}
+		text := errDetail(msg.err)
+		if msg.err == nil {
+			text = "Còpia de seguretat creada:\n  " + msg.path
 		}
-		return p, nil
+		return p, resultModalCmd(text, nil)
 
 	case restoreStagedMsg:
-		if msg.err != nil {
-			p.result = &adminResult{err: msg.err}
-		} else {
-			p.result = &adminResult{text: fmt.Sprintf("Restauració preparada: %s\nEs restaurarà en reiniciar l'aplicació.", msg.name)}
+		text := errDetail(msg.err)
+		if msg.err == nil {
+			text = fmt.Sprintf("Restauració preparada: %s\nEs restaurarà en reiniciar l'aplicació.", msg.name)
 		}
-		return p, nil
+		return p, resultModalCmd(text, nil)
 
 	case tea.KeyMsg:
 		return p.handleKey(msg)
@@ -305,12 +303,10 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	case "r":
 		files, err := p.deps.Backup.ListBackups()
 		if err != nil {
-			p.result = &adminResult{err: err}
-			return p, nil
+			return p, resultModalCmd(errDetail(err), nil)
 		}
 		if len(files) == 0 {
-			p.result = &adminResult{text: dimStyle.Render("(cap còpia de seguretat)")}
-			return p, nil
+			return p, resultModalCmd(dimStyle.Render("(cap còpia de seguretat)"), nil)
 		}
 		return p, openModalCmd(newBackupSelectModal(p.deps, files))
 	}
@@ -335,12 +331,6 @@ func (p adminPanel) View(width, height int) string {
 }
 
 func (p adminPanel) Detail() string {
-	if p.result != nil {
-		if p.result.err != nil {
-			return errDetail(p.result.err)
-		}
-		return p.result.text
-	}
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}

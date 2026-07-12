@@ -40,6 +40,26 @@ func seedDraftTaxonomyYear(t *testing.T, q *sqlc.Queries, year int) {
 	}
 }
 
+// infoModalMessage runs cmd, asserts it opens an infoModal, and returns its
+// message. Admin actions surface their outcome via this modal (dismissed on
+// Enter) rather than lingering result text in Detail().
+func infoModalMessage(t *testing.T, cmd tea.Cmd) string {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("expected a command opening the info modal, got nil")
+	}
+	msg := runCmd(t, cmd)
+	om, ok := msg.(openModalMsg)
+	if !ok {
+		t.Fatalf("expected openModalMsg, got %T", msg)
+	}
+	im, ok := om.modal.(infoModal)
+	if !ok {
+		t.Fatalf("expected infoModal, got %T", om.modal)
+	}
+	return im.message
+}
+
 // --- Taxonomia panel ---
 
 func TestTaxonomyPanel_ListsTypesAndSubtypesForYear(t *testing.T) {
@@ -496,7 +516,7 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	if doneMsg.err != nil {
 		t.Fatalf("generateReportCmd error: %v", doneMsg.err)
 	}
-	p, _ = p.Update(doneMsg)
+	p, cmd = p.Update(doneMsg)
 
 	outputDir := deps.Cfg.OutputDir
 	for _, name := range []string{"Previsions de despeses 2027.pdf", "Previsions de despeses 2027.md"} {
@@ -505,9 +525,9 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		}
 	}
 
-	detail := p.Detail()
-	if !strings.Contains(detail, "2027") && !strings.Contains(detail, "pdf") {
-		t.Errorf("Detail() = %q, want it to show the written paths", detail)
+	message := infoModalMessage(t, cmd)
+	if !strings.Contains(message, "2027") && !strings.Contains(message, "pdf") {
+		t.Errorf("info modal = %q, want it to show the written paths", message)
 	}
 }
 
@@ -584,7 +604,7 @@ func TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist(t *testing.T
 	if genMsg.err != nil {
 		t.Fatalf("generateReconciliationCmd error: %v", genMsg.err)
 	}
-	p, _ = p.Update(genMsg)
+	p, cmd = p.Update(genMsg)
 
 	outputDir := deps.Cfg.OutputDir
 	for _, name := range []string{"Conciliació ajuts 2026.pdf", "Conciliació ajuts 2026.md"} {
@@ -593,9 +613,9 @@ func TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist(t *testing.T
 		}
 	}
 
-	detail := p.Detail()
-	if !strings.Contains(detail, "2026") || !strings.Contains(detail, "pdf") {
-		t.Errorf("Detail() = %q, want it to show the written paths", detail)
+	message := infoModalMessage(t, cmd)
+	if !strings.Contains(message, "2026") || !strings.Contains(message, "pdf") {
+		t.Errorf("info modal = %q, want it to show the written paths", message)
 	}
 }
 
@@ -636,9 +656,9 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	if msg.result.Created != 2 {
 		t.Errorf("Created = %d, want 2", msg.result.Created)
 	}
-	p, _ = p.Update(msg)
-	if got := p.Detail(); !strings.Contains(got, "Importats 2") {
-		t.Errorf("Detail = %q, want it to mention Importats 2", got)
+	_, cmd = p.Update(msg)
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, "Importats 2") {
+		t.Errorf("info modal = %q, want it to mention Importats 2", got)
 	}
 }
 
@@ -664,9 +684,9 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
 	deps, _ := testDeps(t) // no backups created
 	p := NewAdminPanel(deps)
-	p, _ = p.Update(pKey("r"))
-	if got := p.Detail(); !strings.Contains(got, "cap còpia") {
-		t.Errorf("Detail = %q, want it to mention 'cap còpia'", got)
+	_, cmd := p.Update(pKey("r"))
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, "cap còpia") {
+		t.Errorf("info modal = %q, want it to mention 'cap còpia'", got)
 	}
 }
 
@@ -681,8 +701,8 @@ func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
 	if _, err := os.Stat(msg.path); err != nil {
 		t.Fatalf("backup file missing: %v", err)
 	}
-	p, _ = p.Update(msg)
-	if got := p.Detail(); !strings.Contains(got, msg.path) {
-		t.Errorf("Detail = %q, want it to contain the backup path", got)
+	_, cmd = p.Update(msg)
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, msg.path) {
+		t.Errorf("info modal = %q, want it to contain the backup path", got)
 	}
 }
