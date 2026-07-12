@@ -239,11 +239,9 @@ const sidebarOuterWidth = 24
 func (m rootModel) renderSidebar() string {
 	var b strings.Builder
 
-	businessName := ""
-	if m.deps.Cfg != nil {
-		businessName = m.deps.Cfg.BusinessName
-	}
-	b.WriteString(titleStyle.Render(businessName))
+	// The sidebar shows the app name; the cooperative's BusinessName is
+	// reserved for report/web output, not the admin TUI chrome.
+	b.WriteString(titleStyle.Render("Espígol"))
 	b.WriteString("\n")
 	b.WriteString(dimStyle.Render("Any: ") + titleStyle.Render(strconv.Itoa(m.year)))
 	b.WriteString("\n")
