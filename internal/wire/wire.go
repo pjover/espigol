@@ -60,6 +60,7 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 	}
 	clock := system.SystemClock{}
 	txm := persistence.NewTxManager(conn)
+	q := sqlc.New(conn)
 
 	pdf := reportadapter.PDFRenderer{BusinessName: cfg.BusinessName, LogoPath: cfg.LogoPath}
 	reconciliationRenderer := reportadapter.ReconciliationPDFRenderer{
@@ -81,6 +82,8 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		Exporter:               reportadapter.NewReportExporter(pdf),
 		ReconciliationExporter: reconciliationExporter,
 		Backup:                 backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
+		ActiveYear:             persistence.NewAppStateRepository(q),
+		Clock:                  clock,
 		Cfg:                    cfg,
 	}
 

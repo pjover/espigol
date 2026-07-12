@@ -22,6 +22,10 @@ import (
 type yearsLoadedMsg struct {
 	windows []model.SubmissionWindow
 	err     error
+	// selected is the row to select after this load: >= 0 forces that index
+	// (used by the initial load to restore the stored active year), -1 means
+	// "keep the current selection" (used by mutation reloads).
+	selected int
 }
 
 // yearsPanel is the "Anys" panel: lists submission windows and lets the
@@ -52,12 +56,36 @@ func (p yearsPanel) loadWindows(ctx context.Context) ([]model.SubmissionWindow, 
 	return windows, nil
 }
 
-// loadCmd returns a tea.Cmd that lists all windows via WindowService.List.
+// loadCmd returns a tea.Cmd that lists all windows via WindowService.List and
+// selects the restored active year (defaulting to the current calendar year).
 func (p yearsPanel) loadCmd() tea.Cmd {
 	return func() tea.Msg {
-		windows, err := p.loadWindows(context.Background())
-		return yearsLoadedMsg{windows: windows, err: err}
+		ctx := context.Background()
+		windows, err := p.loadWindows(ctx)
+		if err != nil {
+			return yearsLoadedMsg{windows: windows, err: err, selected: -1}
+		}
+		return yearsLoadedMsg{windows: windows, err: err, selected: p.initialSelection(ctx, windows)}
 	}
+}
+
+// initialSelection returns the index of the window to select on boot: the
+// stored active year if present (else the current calendar year), falling back
+// to the most recent window when that year has no window.
+func (p yearsPanel) initialSelection(ctx context.Context, windows []model.SubmissionWindow) int {
+	if len(windows) == 0 {
+		return 0
+	}
+	target := p.deps.Clock.Now().Year()
+	if y, ok, err := p.deps.ActiveYear.ActiveYear(ctx); err == nil && ok {
+		target = y
+	}
+	for i, w := range windows {
+		if w.Year() == target {
+			return i
+		}
+	}
+	return len(windows) - 1 // windows are sorted ascending → most recent
 }
 
 // mutateCmd wraps a service call: if fn fails, the mutation error is what
@@ -73,7 +101,7 @@ func (p yearsPanel) mutateCmd(fn func(ctx context.Context) error) tea.Cmd {
 		if mutateErr != nil {
 			err = mutateErr
 		}
-		return yearsLoadedMsg{windows: windows, err: err}
+		return yearsLoadedMsg{windows: windows, err: err, selected: -1}
 	}
 }
 
@@ -92,6 +120,9 @@ func (p yearsPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 	case yearsLoadedMsg:
 		p.windows = msg.windows
 		p.err = msg.err
+		if msg.selected >= 0 {
+			p.selected = msg.selected
+		}
 		if p.selected >= len(p.windows) {
 			p.selected = max(0, len(p.windows)-1)
 		}
@@ -178,7 +209,7 @@ func (p yearsPanel) confirmCmd(message string, fn func(ctx context.Context, year
 		if mutateErr != nil {
 			err = mutateErr
 		}
-		return yearsLoadedMsg{windows: windows, err: err}
+		return yearsLoadedMsg{windows: windows, err: err, selected: -1}
 	}
 	return openModalCmd(newConfirmModal(message, onConfirm))
 }

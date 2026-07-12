@@ -105,6 +105,14 @@ type ReconciliationSnapshotRepository interface {
 	FindByYear(ctx context.Context, year int) (model.ReconciliationSnapshot, bool, error)
 }
 
+// ActiveYearStore persists the TUI's last-selected year so it survives across
+// sessions (single-row, upsert semantics). ActiveYear reports found=false when
+// nothing has been stored yet.
+type ActiveYearStore interface {
+	ActiveYear(ctx context.Context) (year int, found bool, err error)
+	SetActiveYear(ctx context.Context, year int) error
+}
+
 // ReconciliationRenderer renders a ReconciliationData snapshot to PDF bytes.
 type ReconciliationRenderer interface {
 	Render(rd services.ReconciliationData, generatedAt time.Time) ([]byte, error)

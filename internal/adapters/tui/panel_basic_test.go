@@ -60,6 +60,8 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 		Exporter:               exporter,
 		ReconciliationExporter: reconExporter,
 		Backup:                 backup.New(conn, dbPath, filepath.Join(home, "backups"), clock),
+		ActiveYear:             persistence.NewAppStateRepository(q),
+		Clock:                  clock,
 		Cfg: &config.Config{
 			Home:      home,
 			DBPath:    dbPath,
@@ -163,19 +165,46 @@ func TestYearsPanel_SelectionEmitsYearSelectedCmd(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected yearSelectedMsg after load, got %T", msg)
 	}
-	if ys.Year != 2025 {
-		t.Errorf("yearSelectedMsg.Year = %d, want 2025 (first window)", ys.Year)
+	// No stored active year → defaults to the current calendar year (the test
+	// clock is 2026), so the 2026 window is selected on load.
+	if ys.Year != 2026 {
+		t.Errorf("yearSelectedMsg.Year = %d, want 2026 (current-year default)", ys.Year)
 	}
 
-	// Move selection down; should emit yearSelectedCmd(2026).
-	p, cmd = p.Update(pKey("down"))
+	// Move selection up; should emit yearSelectedCmd(2025).
+	p, cmd = p.Update(pKey("up"))
 	msg = runCmd(t, cmd)
 	ys, ok = msg.(yearSelectedMsg)
 	if !ok {
 		t.Fatalf("expected yearSelectedMsg after moving selection, got %T", msg)
 	}
-	if ys.Year != 2026 {
-		t.Errorf("yearSelectedMsg.Year = %d, want 2026", ys.Year)
+	if ys.Year != 2025 {
+		t.Errorf("yearSelectedMsg.Year = %d, want 2025", ys.Year)
+	}
+}
+
+// TestYearsPanel_RestoresStoredActiveYear verifies the panel selects the
+// persisted active year on load, overriding the current-year default.
+func TestYearsPanel_RestoresStoredActiveYear(t *testing.T) {
+	deps, q := testDeps(t)
+	seedWindow(t, q, 2024, model.WindowClosed)
+	seedWindow(t, q, 2025, model.WindowClosed)
+	seedWindow(t, q, 2026, model.WindowDraft)
+	if err := deps.ActiveYear.SetActiveYear(context.Background(), 2025); err != nil {
+		t.Fatal(err)
+	}
+
+	p := NewYearsPanel(deps)
+	_, cmd := p.Update(panelInitMsg{})
+	loaded := runCmd(t, cmd).(yearsLoadedMsg)
+	p, cmd = p.Update(loaded)
+
+	ys, ok := runCmd(t, cmd).(yearSelectedMsg)
+	if !ok {
+		t.Fatalf("expected yearSelectedMsg after load, got %T", ys)
+	}
+	if ys.Year != 2025 {
+		t.Errorf("yearSelectedMsg.Year = %d, want 2025 (stored active year)", ys.Year)
 	}
 }
 

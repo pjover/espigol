@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -60,6 +61,16 @@ type yearSelectedMsg struct {
 // context.
 func yearSelectedCmd(year int, state model.WindowState) tea.Cmd {
 	return func() tea.Msg { return yearSelectedMsg{Year: year, State: state} }
+}
+
+// persistActiveYearCmd stores the active year so it is restored on next launch.
+// It is fire-and-forget: a failed write is a UI-preference miss, not worth
+// surfacing, so it emits no message.
+func persistActiveYearCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		_ = deps.ActiveYear.SetActiveYear(context.Background(), year)
+		return nil
+	}
 }
 
 // rootModel is the Bubble Tea root model. It owns global navigation (panel
@@ -144,7 +155,8 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case yearSelectedMsg:
 		m.year = msg.Year
 		m.yearState = msg.State
-		cmds := make([]tea.Cmd, 0, len(m.panels))
+		cmds := make([]tea.Cmd, 0, len(m.panels)+1)
+		cmds = append(cmds, persistActiveYearCmd(m.deps, msg.Year))
 		for i, p := range m.panels {
 			updated, cmd := p.Update(msg)
 			m.panels[i] = updated

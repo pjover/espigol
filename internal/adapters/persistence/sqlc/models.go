@@ -8,6 +8,11 @@ import (
 	"database/sql"
 )
 
+type AppState struct {
+	ID         int64
+	ActiveYear int64
+}
+
 type AuditEvent struct {
 	ID         int64
 	ActorID    sql.NullInt64

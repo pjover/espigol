@@ -14,4 +14,5 @@ var (
 	_ ports.ConcessionRepository             = (*ConcessionRepository)(nil)
 	_ ports.InvoiceRepository                = (*InvoiceRepository)(nil)
 	_ ports.ReconciliationSnapshotRepository = (*ReconciliationSnapshotRepository)(nil)
+	_ ports.ActiveYearStore                  = (*AppStateRepository)(nil)
 )

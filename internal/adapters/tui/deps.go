@@ -24,5 +24,7 @@ type Deps struct {
 	Exporter               report.ReportExporter
 	ReconciliationExporter ports.ReconciliationExporter
 	Backup                 backup.Backuper
+	ActiveYear             ports.ActiveYearStore
+	Clock                  ports.Clock
 	Cfg                    *config.Config
 }
