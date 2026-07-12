@@ -243,7 +243,7 @@ func seedOpenWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode s
 	}
 
 	pr := persistence.NewPartnerRepository(q)
-	soci, _ := model.NewPartner(1, "Soci U", "", "", "u1@e.test", "", model.Productor, 0, scNow(), false)
+	soci, _ := model.NewPartner(1, "Soci U", "Soci U", "", "", "u1@e.test", "", model.Productor, 0, scNow(), false)
 	if err := pr.Save(ctx, soci); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func seedClosedWindowWithSectionForecast(t *testing.T, conn *sql.DB, sectionCode
 	}
 
 	pr := persistence.NewPartnerRepository(q)
-	soci, _ := model.NewPartner(1, "Soci U", "", "", "u1@e.test", "", model.Productor, 0, scNow(), false)
+	soci, _ := model.NewPartner(1, "Soci U", "Soci U", "", "", "u1@e.test", "", model.Productor, 0, scNow(), false)
 	if err := pr.Save(ctx, soci); err != nil {
 		t.Fatal(err)
 	}

@@ -51,7 +51,7 @@ func TestReportService_Preview_MatchesGoldenTotals(t *testing.T) {
 
 	for _, id := range []int{1, 2, 4, 5, 6, 7, 8, 11} {
 		email := "soci" + strconv.Itoa(id) + "@e.test"
-		p, _ := model.NewPartner(id, "Soci", "", "", email, "", model.Productor, 0,
+		p, _ := model.NewPartner(id, "Soci", "Soci", "", "", email, "", model.Productor, 0,
 			time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 		if err := pr.Save(ctx, p); err != nil {
 			t.Fatal(err)

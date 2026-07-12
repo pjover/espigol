@@ -19,7 +19,7 @@ func d(t *testing.T, s string) model.Money {
 func mkForecast(t *testing.T, id string, partnerID int, gross string, scope model.ExpenseScope, subtype string) model.ExpenseForecast {
 	t.Helper()
 	planned := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
-	p, err := model.NewPartner(partnerID, "Soci", "", "", "soci@e.test", "", model.Productor, 0, planned, false)
+	p, err := model.NewPartner(partnerID, "Soci", "Soci", "", "", "soci@e.test", "", model.Productor, 0, planned, false)
 	if err != nil {
 		t.Fatalf("partner %d: %v", partnerID, err)
 	}
@@ -33,7 +33,7 @@ func mkForecast(t *testing.T, id string, partnerID int, gross string, scope mode
 
 func mkPartner(t *testing.T, id int) model.Partner {
 	t.Helper()
-	p, err := model.NewPartner(id, "Soci "+itoa(id), "", "", "soci@x.test", "", model.Productor, 0,
+	p, err := model.NewPartner(id, "Soci "+itoa(id), "Soci "+itoa(id), "", "", "soci@x.test", "", model.Productor, 0,
 		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	if err != nil {
 		t.Fatalf("partner %d: %v", id, err)
@@ -134,7 +134,7 @@ func TestCompute_SocisCappedProration(t *testing.T) {
 	// p2 is capped: its single item (gross 400) prorated by 60/400 -> approved 60.00
 	var p2 *struct{}
 	for _, det := range pd.PartnerDetails {
-		if det.Name == "Soci 2 (2)" {
+		if det.Name == "Soci 2" {
 			if !det.IsCapped || det.MaxAuthorized.String() != "60.00" {
 				t.Errorf("p2 detail: capped=%v max=%s", det.IsCapped, det.MaxAuthorized)
 			}

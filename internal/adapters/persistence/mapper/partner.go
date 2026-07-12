@@ -13,6 +13,7 @@ func PartnerToRow(p model.Partner) sqlc.UpsertPartnerParams {
 	return sqlc.UpsertPartnerParams{
 		ID:          int64(p.ID()),
 		Name:        p.Name(),
+		NickName:    p.NickName(),
 		Surname:     p.Surname(),
 		VatCode:     p.VatCode(),
 		Email:       p.Email(),
@@ -33,6 +34,6 @@ func PartnerFromRow(r sqlc.Partner) (model.Partner, error) {
 	if err != nil {
 		return model.Partner{}, err
 	}
-	return model.NewPartner(int(r.ID), r.Name, r.Surname, r.VatCode, r.Email, r.Mobile,
+	return model.NewPartner(int(r.ID), r.Name, r.NickName, r.Surname, r.VatCode, r.Email, r.Mobile,
 		pt, int(r.RiaNumber), addedOn, r.BoardMember == 1)
 }

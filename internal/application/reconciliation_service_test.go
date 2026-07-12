@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,12 +19,19 @@ import (
 	"github.com/pjover/espigol/internal/domain/services"
 )
 
+// fakeReconciliationRenderer is a minimal test double.
+type fakeReconciliationRenderer struct{}
+
+func (fakeReconciliationRenderer) Render(_ services.ReconciliationData, _ time.Time) ([]byte, error) {
+	return []byte("%PDF-fake"), nil
+}
+
 // buildReconWorld seeds a 2025 window + subtype a6 + partner + one forecast and
 // returns the tx manager and the forecast id. Reuses the shared newTestTxWorld
 // helper convention from window_service_test.go.
 func TestReconciliationImport_HappyPathAndWarnings(t *testing.T) {
 	world := newReconWorld(t) // helper below
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 
 	in := application.ReconciliationImport{
@@ -60,7 +68,7 @@ func TestReconciliationImport_HappyPathAndWarnings(t *testing.T) {
 
 func TestReconciliationImport_UnknownForecastRollsBack(t *testing.T) {
 	world := newReconWorld(t)
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 
 	in := application.ReconciliationImport{
@@ -82,7 +90,7 @@ func TestReconciliationImport_UnknownForecastRollsBack(t *testing.T) {
 
 func TestReconciliationImport_UnknownSubtypeFails(t *testing.T) {
 	world := newReconWorld(t)
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 	in := application.ReconciliationImport{
 		Year: 2025,
@@ -99,6 +107,11 @@ func TestReconciliationImport_UnknownSubtypeFails(t *testing.T) {
 type reconWorld struct {
 	tx         *persistence.TxManager
 	forecastID string
+	db         *sql.DB
+}
+
+func (w reconWorld) queryCount(dest *int, query string) error {
+	return w.db.QueryRow(query).Scan(dest)
 }
 
 func newReconWorld(t *testing.T) reconWorld {
@@ -124,18 +137,89 @@ func newReconWorld(t *testing.T) reconWorld {
 	st, _ := model.NewExpenseSubtype(2025, "a6", "[a6]", "A")
 	_ = tax.SaveSubtype(ctx, st)
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	_ = pr.Save(ctx, p7)
 	uf, _ := model.NewUnsavedExpenseForecast(p7, "Adob", "d", model.MoneyOf(500), model.ZeroMoney(),
 		nil, planned, 2025, "a6", model.NewCommonScope(), planned, true)
 	f, _ := fr.Create(ctx, uf)
 
-	return reconWorld{tx: persistence.NewTxManager(conn), forecastID: f.ID()}
+	return reconWorld{tx: persistence.NewTxManager(conn), forecastID: f.ID(), db: conn}
+}
+
+func TestReconciliationGenerateReport_HappyPath(t *testing.T) {
+	world := newReconWorld(t)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
+	ctx := context.Background()
+
+	// Seed one concession + invoice so Compute returns data.
+	in := application.ReconciliationImport{
+		Year: 2025,
+		Concessions: []application.ConcessionInput{{
+			Year: 2025, GroupCode: "A6-02", SubtypeCode: "a6", Concept: "Test",
+			RequestedTotal: model.MoneyOf(500), GrantedAmount: model.MoneyOf(500),
+			ForecastIDs: []string{world.forecastID},
+		}},
+		Invoices: []application.InvoiceInput{{
+			Year: 2025, Issuer: "S", Nif: "B1", Number: "F1",
+			IssueDate: time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC), NetAmount: model.MoneyOf(500),
+			Payments: []application.PaymentInput{{PaidOn: time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), Amount: model.MoneyOf(500)}},
+			Links:    []application.LinkInput{{ForecastID: world.forecastID, Amount: model.MoneyOf(500)}},
+		}},
+	}
+	if _, err := svc.AdminImport(ctx, in); err != nil {
+		t.Fatalf("AdminImport: %v", err)
+	}
+
+	snap, err := svc.GenerateReport(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GenerateReport: %v", err)
+	}
+	if snap.SnapshotJSON() == "" {
+		t.Error("SnapshotJSON is empty")
+	}
+	if string(snap.Pdf()) != "%PDF-fake" {
+		t.Errorf("Pdf = %q, want %%PDF-fake", snap.Pdf())
+	}
+
+	// LatestSnapshot must return the same data.
+	got, ok, err := svc.LatestSnapshot(ctx, 2025)
+	if err != nil {
+		t.Fatalf("LatestSnapshot: %v", err)
+	}
+	if !ok {
+		t.Fatal("LatestSnapshot: not found")
+	}
+	if got.SnapshotJSON() != snap.SnapshotJSON() {
+		t.Errorf("LatestSnapshot JSON mismatch")
+	}
+}
+
+func TestReconciliationGenerateReport_OverwriteKeepsOneRow(t *testing.T) {
+	world := newReconWorld(t)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
+	ctx := context.Background()
+
+	// Generate twice — should upsert, not insert.
+	if _, err := svc.GenerateReport(ctx, 2025); err != nil {
+		t.Fatalf("first GenerateReport: %v", err)
+	}
+	if _, err := svc.GenerateReport(ctx, 2025); err != nil {
+		t.Fatalf("second GenerateReport: %v", err)
+	}
+
+	// Direct count via the tx.
+	var count int
+	if err := world.queryCount(&count, "SELECT COUNT(*) FROM reconciliation_snapshot WHERE year=2025"); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 row after two generates, got %d", count)
+	}
 }
 
 func TestReconciliationService_Compute_HappyPath(t *testing.T) {
 	world := newReconWorld(t) // seeds 2025 window, subtype a6, partner 7, one forecast CP25001
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 
 	// Seed a concession + a fully-paid invoice via AdminImport so we exercise
@@ -145,7 +229,7 @@ func TestReconciliationService_Compute_HappyPath(t *testing.T) {
 		Concessions: []application.ConcessionInput{{
 			Year: 2025, GroupCode: "A6-01", SubtypeCode: "a6", Concept: "Adob",
 			RequestedTotal: model.MoneyOf(500), GrantedAmount: model.MoneyOf(500),
-			ForecastIDs:    []string{world.forecastID},
+			ForecastIDs: []string{world.forecastID},
 		}},
 		Invoices: []application.InvoiceInput{{
 			Year: 2025, Issuer: "Sup", Nif: "B1", Number: "F1",
@@ -202,7 +286,7 @@ func newReconWorldWithForecasts(t *testing.T, ids ...string) reconWorld {
 	st, _ := model.NewExpenseSubtype(2025, "a6", "[a6]", "A")
 	_ = tax.SaveSubtype(ctx, st)
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	_ = pr.Save(ctx, p7)
 
 	// Allocate forecasts CP25001.. until all requested ids are present.
@@ -240,7 +324,7 @@ func TestReconciliation2025Fixture_ComputeMatchesWorkbook(t *testing.T) {
 	}
 
 	world := new2025World(t) // helper defined below
-	svc := application.NewReconciliationService(world.tx)
+	svc := application.NewReconciliationService(world.tx, system.SystemClock{}, fakeReconciliationRenderer{})
 	ctx := context.Background()
 
 	in, err := importer.LoadReconciliation(path, 2025)
@@ -321,6 +405,46 @@ func TestReconciliation2025Fixture_ComputeMatchesWorkbook(t *testing.T) {
 	if len(b201.Forecasts) != 1 || b201.Forecasts[0].Status != services.StatusPartiallyJustified {
 		t.Errorf("B2-01 forecast status = %v, want StatusPartiallyJustified", b201.Forecasts[0].Status)
 	}
+
+	// --- Phase 3: GenerateReport persists a snapshot ---
+	snap, err := svc.GenerateReport(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GenerateReport: %v", err)
+	}
+
+	// SnapshotJSON round-trips back to identical per-subtype totals.
+	rd2, err := application.ReconciliationSnapshotFromJSON(snap.SnapshotJSON())
+	if err != nil {
+		t.Fatalf("ReconciliationSnapshotFromJSON: %v", err)
+	}
+	haveExec2 := map[string]string{}
+	for _, cat := range rd2.Categories {
+		for _, st := range cat.Subtypes {
+			haveExec2[st.Code] = st.Executed.String()
+		}
+	}
+	for code, want := range wantExec {
+		if got := haveExec2[code]; got != want {
+			t.Errorf("round-tripped subtype %s Executed = %s, want %s", code, got, want)
+		}
+	}
+
+	// Persisted snapshot is retrievable.
+	stored, ok, err := svc.LatestSnapshot(ctx, 2025)
+	if err != nil {
+		t.Fatalf("LatestSnapshot: %v", err)
+	}
+	if !ok {
+		t.Fatal("LatestSnapshot: not found after GenerateReport")
+	}
+	if stored.SnapshotJSON() != snap.SnapshotJSON() {
+		t.Errorf("stored SnapshotJSON differs from returned value")
+	}
+
+	// PDF is non-empty and looks like a PDF (from fakeRenderer: "%PDF-fake").
+	if len(stored.Pdf()) == 0 {
+		t.Error("stored PDF is empty")
+	}
 }
 
 // new2025World seeds a scratch SQLite DB with the 2025 taxonomy (a2/a3/a4/a6/b1/b2
@@ -369,7 +493,7 @@ func new2025World(t *testing.T) reconWorld {
 
 	// Partners 1/2/4/5/6/7/8/11 (derived from export-forecasts.json).
 	for _, pid := range []int{1, 2, 4, 5, 6, 7, 8, 11} {
-		p, _ := model.NewPartner(pid, fmt.Sprintf("P%d", pid), "S", "V",
+		p, _ := model.NewPartner(pid, fmt.Sprintf("P%d", pid), fmt.Sprintf("P%d", pid), "S", "V",
 			fmt.Sprintf("p%d@e.cat", pid), "6", model.Productor, 1, planned, false)
 		_ = pr.Save(ctx, p)
 	}

@@ -72,6 +72,62 @@ func TestLoad_EnvOverridesFile(t *testing.T) {
 	}
 }
 
+func TestLoad_RelativePathsResolvedAgainstHome(t *testing.T) {
+	home := t.TempDir()
+	yaml := "" +
+		"output:\n" +
+		"  dir: myreports\n" +
+		"backup:\n" +
+		"  dir: mybackups\n" +
+		"logo:\n" +
+		"  path: mylogo.png\n"
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(home)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.OutputDir != filepath.Join(home, "myreports") {
+		t.Errorf("OutputDir = %q, want %q", cfg.OutputDir, filepath.Join(home, "myreports"))
+	}
+	if cfg.BackupDir != filepath.Join(home, "mybackups") {
+		t.Errorf("BackupDir = %q, want %q", cfg.BackupDir, filepath.Join(home, "mybackups"))
+	}
+	if cfg.LogoPath != filepath.Join(home, "mylogo.png") {
+		t.Errorf("LogoPath = %q, want %q", cfg.LogoPath, filepath.Join(home, "mylogo.png"))
+	}
+}
+
+func TestLoad_AbsolutePathsKeptAsIs(t *testing.T) {
+	home := t.TempDir()
+	yaml := "" +
+		"output:\n" +
+		"  dir: /srv/reports\n" +
+		"backup:\n" +
+		"  dir: /srv/backups\n" +
+		"logo:\n" +
+		"  path: /srv/logo.png\n"
+	if err := os.WriteFile(filepath.Join(home, "config.yaml"), []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(home)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.OutputDir != "/srv/reports" {
+		t.Errorf("OutputDir = %q, want /srv/reports", cfg.OutputDir)
+	}
+	if cfg.BackupDir != "/srv/backups" {
+		t.Errorf("BackupDir = %q, want /srv/backups", cfg.BackupDir)
+	}
+	if cfg.LogoPath != "/srv/logo.png" {
+		t.Errorf("LogoPath = %q, want /srv/logo.png", cfg.LogoPath)
+	}
+}
+
 func TestLoad_ReturnsErrorOnMalformedYaml(t *testing.T) {
 	home := t.TempDir()
 	// Tab indentation and broken structure make this invalid YAML.

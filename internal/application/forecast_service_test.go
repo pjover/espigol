@@ -49,8 +49,8 @@ func seedOpen2026(t *testing.T, conn *sql.DB) {
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
 	_ = sr.Save(ctx, oliva)
 	pr := persistence.NewPartnerRepository(q)
-	soci, _ := model.NewPartner(1, "Soci U", "", "", "u1@e.test", "", model.Productor, 0, fcNow(), false)
-	board, _ := model.NewPartner(7, "Board", "", "", "b7@e.test", "", model.Productor, 0, fcNow(), true)
+	soci, _ := model.NewPartner(1, "Soci U", "Soci U", "", "", "u1@e.test", "", model.Productor, 0, fcNow(), false)
+	board, _ := model.NewPartner(7, "Board", "Board", "", "", "b7@e.test", "", model.Productor, 0, fcNow(), true)
 	_ = pr.Save(ctx, soci)
 	_ = pr.Save(ctx, board)
 	bar := persistence.NewBoardAuthorizationRepository(q)
@@ -191,7 +191,7 @@ func TestForecastService_RejectsWhenNoOpenWindow(t *testing.T) {
 	svc, conn := newFcSvc(t)
 	// no window seeded
 	_ = conn
-	soci, _ := model.NewPartner(1, "X", "", "", "x@e.test", "", model.Productor, 0, fcNow(), false)
+	soci, _ := model.NewPartner(1, "X", "X", "", "", "x@e.test", "", model.Productor, 0, fcNow(), false)
 	if _, err := svc.Create(context.Background(), soci, partnerInput("100.00")); !errors.Is(err, application.ErrNoOpenWindow) {
 		t.Errorf("want ErrNoOpenWindow, got %v", err)
 	}

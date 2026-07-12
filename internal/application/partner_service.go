@@ -8,11 +8,11 @@ import (
 )
 
 type PartnerInput struct {
-	ID                                    int
-	Name, Surname, VatCode, Email, Mobile string
-	PartnerType                           model.PartnerType
-	RiaNumber                             int
-	BoardMember                           bool
+	ID                                              int
+	Name, NickName, Surname, VatCode, Email, Mobile string
+	PartnerType                                     model.PartnerType
+	RiaNumber                                       int
+	BoardMember                                     bool
 }
 
 type PartnerService struct {
@@ -41,7 +41,7 @@ func (s *PartnerService) Create(ctx context.Context, in PartnerInput) (model.Par
 				return ErrEmailTaken
 			}
 		}
-		p, err := model.NewPartner(in.ID, in.Name, in.Surname, in.VatCode, in.Email, in.Mobile,
+		p, err := model.NewPartner(in.ID, in.Name, in.NickName, in.Surname, in.VatCode, in.Email, in.Mobile,
 			in.PartnerType, in.RiaNumber, now, in.BoardMember)
 		if err != nil {
 			return err
@@ -73,7 +73,7 @@ func (s *PartnerService) Update(ctx context.Context, id int, in PartnerInput) er
 				return ErrEmailTaken
 			}
 		}
-		p, err := model.NewPartner(id, in.Name, in.Surname, in.VatCode, in.Email, in.Mobile,
+		p, err := model.NewPartner(id, in.Name, in.NickName, in.Surname, in.VatCode, in.Email, in.Mobile,
 			in.PartnerType, in.RiaNumber, existing.AddedOn(), in.BoardMember)
 		if err != nil {
 			return err

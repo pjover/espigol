@@ -33,7 +33,6 @@ make vet             # go vet ./...
 make tidy            # go mod tidy
 make sqlc-generate    # regenerate internal/adapters/persistence/sqlc from db/queries + db/migrations
 make dist            # cross-compile linux-amd64, linux-arm64, darwin-arm64 into dist/<os>-<arch>/espigol
-make adopt           # build cmd/adopt, the one-time Mongo(via espigol-java)->this-schema migration tool
 ```
 
 Single test: `go test ./internal/domain/services/... -run TestFairShare -v` (standard Go
@@ -52,7 +51,6 @@ domain imports nothing from `adapters/`** — no SQL, HTTP, or TUI types leak in
 
 ```
 cmd/espigol/main.go        entrypoint -> internal/app (flag parse: TUI vs --server vs --version)
-cmd/adopt/                 one-time legacy-DB adoption tool (legacy/ read, transform/ convert)
 internal/domain/
   model/                   immutable structs (Partner, ExpenseForecast, Section, Money, ...)
   ports/                   repository + Clock + ReportRenderer interfaces the domain depends on
@@ -113,7 +111,10 @@ structs inside `persistence/`; mappers translate at the port boundary.
 (SQLite via `modernc.org/sqlite`, pure Go/no CGO, opened WAL + busy_timeout so the TUI and
 server can safely touch the same file concurrently), `config.yaml`, `logo.png`, `reports/`,
 `backups/`, `import/`. Config keys can be overridden by `ESPIGOL_<KEY>` env vars (viper);
-submission-window limits live in the DB, not config.
+submission-window limits live in the DB, not config. Path values in `config.yaml`
+(`output.dir`, `backup.dir`, `logo.path`) accept relative paths (resolved against
+`$ESPIGOL_HOME`) or absolute paths; an empty/omitted key falls back to the
+`$ESPIGOL_HOME`-relative default.
 
 ### `private/`
 

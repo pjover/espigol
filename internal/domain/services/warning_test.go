@@ -72,7 +72,7 @@ func mustMembership(t *testing.T, partnerID int, code string) model.PartnerSecti
 
 func mkNonProducer(t *testing.T, id int) model.Partner {
 	t.Helper()
-	p, err := model.NewPartner(id, "Soci "+itoa(id), "", "", "x@x.test", "", model.Patrocinador, 0,
+	p, err := model.NewPartner(id, "Soci "+itoa(id), "Soci "+itoa(id), "", "", "x@x.test", "", model.Patrocinador, 0,
 		modelTime(), false)
 	if err != nil {
 		t.Fatalf("partner: %v", err)

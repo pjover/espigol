@@ -4,7 +4,7 @@ VERSION:=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS=-s -w -X main.version=$(VERSION)
 DIST_TARGETS=linux-amd64 linux-arm64 darwin-arm64
 
-.PHONY: build run tui server test fmt vet tidy sqlc-generate migrate-status adopt \
+.PHONY: build run tui server test fmt vet tidy sqlc-generate migrate-status \
 	dist $(addprefix dist-,$(DIST_TARGETS)) clean
 
 fmt:
@@ -37,9 +37,6 @@ sqlc-generate:
 
 migrate-status:
 	@echo "migrations are applied automatically on Open; see db/migrations/"
-
-adopt:
-	go build -o bin/adopt ./cmd/adopt
 
 # dist cross-compiles the deployable binary for every target in DIST_TARGETS,
 # each as dist/<os>-<arch>/espigol, plus a combined SHA256SUMS.

@@ -15,7 +15,7 @@ func TestConcessionRepository_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	uf, _ := model.NewUnsavedExpenseForecast(p7, "Adob", "d", model.MoneyOf(6580), model.ZeroMoney(),
 		nil, planned, 2025, "a1", model.NewCommonScope(), planned, true)
 	f, err := fr.Create(ctx, uf) // allocates CP25001

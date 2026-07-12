@@ -67,10 +67,12 @@ func EnsureHome(home string) error {
 	return os.WriteFile(cfgPath, defaultConfigYAML(home), 0o600)
 }
 
-func defaultConfigYAML(home string) []byte {
-	return []byte(fmt.Sprintf(`# Espígol configuration — edit as needed.
+func defaultConfigYAML(_ string) []byte {
+	return []byte(`# Espígol configuration — edit as needed.
 # All keys can be overridden with ESPIGOL_<KEY> environment variables
 # (e.g. ESPIGOL_SERVER_PORT=9090, ESPIGOL_ADMIN_EMAIL=admin@example.org).
+#
+# Paths below are relative to $ESPIGOL_HOME or absolute if you prefer.
 
 business:
   name: "Cooperativa d'Estellencs"
@@ -79,13 +81,13 @@ server:
   port: 8080
 
 output:
-  dir: %q
+  dir: "reports"
 
 backup:
-  dir: %q
+  dir: "backups"
 
 logo:
-  path: %q
+  path: "logo.png"
 
 oauth:
   client_id: ""
@@ -94,11 +96,7 @@ oauth:
 
 admin:
   email: "admin@espigol"
-`,
-		filepath.Join(home, "reports"),
-		filepath.Join(home, "backups"),
-		filepath.Join(home, "logo.png"),
-	))
+`)
 }
 
 // Load reads <home>/config.yaml if present, applies defaults, and allows
@@ -131,14 +129,18 @@ func Load(home string) (*Config, error) {
 		}
 	}
 
+	outputDir := resolvePath(home, v.GetString("output.dir"), "reports")
+	backupDir := resolvePath(home, v.GetString("backup.dir"), "backups")
+	logoPath := resolvePath(home, v.GetString("logo.path"), "logo.png")
+
 	cfg := &Config{
 		Home:         home,
 		DBPath:       filepath.Join(home, "espigol.db"),
 		BusinessName: v.GetString("business.name"),
-		OutputDir:    v.GetString("output.dir"),
-		BackupDir:    v.GetString("backup.dir"),
+		OutputDir:    outputDir,
+		BackupDir:    backupDir,
 		ImportDir:    filepath.Join(home, "import"),
-		LogoPath:     v.GetString("logo.path"),
+		LogoPath:     logoPath,
 	}
 	cfg.Server.Port = v.GetInt("server.port")
 	cfg.OAuth.ClientID = v.GetString("oauth.client_id")
@@ -146,4 +148,16 @@ func Load(home string) (*Config, error) {
 	cfg.OAuth.RedirectURL = v.GetString("oauth.redirect_url")
 	cfg.Admin.Email = v.GetString("admin.email")
 	return cfg, nil
+}
+
+// resolvePath resolves a config path value against home.
+// Empty/omitted → home/rel (default). Relative → home/val. Absolute → val.
+func resolvePath(home, val, rel string) string {
+	if val == "" {
+		return filepath.Join(home, rel)
+	}
+	if filepath.IsAbs(val) {
+		return val
+	}
+	return filepath.Join(home, val)
 }

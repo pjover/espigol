@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pjover/espigol/internal/domain/model"
+	"github.com/pjover/espigol/internal/domain/services"
 )
 
 // Clock returns the current time.
@@ -95,4 +96,30 @@ type InvoiceRepository interface {
 	Save(ctx context.Context, inv model.Invoice) (model.Invoice, error)
 	Delete(ctx context.Context, invoiceID int) error
 	ReplaceForYear(ctx context.Context, year int, invoices []model.Invoice) error
+}
+
+// ReconciliationSnapshotRepository stores and retrieves the per-year
+// reconciliation snapshot (one row per year, upsert semantics).
+type ReconciliationSnapshotRepository interface {
+	Save(ctx context.Context, s model.ReconciliationSnapshot) error
+	FindByYear(ctx context.Context, year int) (model.ReconciliationSnapshot, bool, error)
+}
+
+// ActiveYearStore persists the TUI's last-selected year so it survives across
+// sessions (single-row, upsert semantics). ActiveYear reports found=false when
+// nothing has been stored yet.
+type ActiveYearStore interface {
+	ActiveYear(ctx context.Context) (year int, found bool, err error)
+	SetActiveYear(ctx context.Context, year int) error
+}
+
+// ReconciliationRenderer renders a ReconciliationData snapshot to PDF bytes.
+type ReconciliationRenderer interface {
+	Render(rd services.ReconciliationData, generatedAt time.Time) ([]byte, error)
+}
+
+// ReconciliationExporter writes the PDF + Markdown files to outputDir and
+// returns their paths.
+type ReconciliationExporter interface {
+	Export(rec model.ReconciliationSnapshot, outputDir string) ([]string, error)
 }

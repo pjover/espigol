@@ -128,11 +128,12 @@ func (p partnersPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 // "create" (the id field is editable); otherwise it's "edit" (id fixed).
 func (p partnersPanel) partnerForm(existing *model.Partner) formModal {
 	title := "Nou soci"
-	idValue, name, surname, vat, email, mobile, ptype, ria := "", "", "", "", "", "", "", ""
+	idValue, name, nickName, surname, vat, email, mobile, ptype, ria := "", "", "", "", "", "", "", "", ""
 	if existing != nil {
 		title = "Edita soci"
 		idValue = strconv.Itoa(existing.ID())
 		name = existing.Name()
+		nickName = existing.NickName()
 		surname = existing.Surname()
 		vat = existing.VatCode()
 		email = existing.Email()
@@ -147,6 +148,7 @@ func (p partnersPanel) partnerForm(existing *model.Partner) formModal {
 	}
 	fields = append(fields,
 		formFieldDef{Label: "Nom", Placeholder: "Nom", Value: name},
+		formFieldDef{Label: "Nom curt", Placeholder: "Nom curt", Value: nickName},
 		formFieldDef{Label: "Cognoms", Placeholder: "Cognoms", Value: surname},
 		formFieldDef{Label: "NIF", Placeholder: "12345678A", Value: vat},
 		formFieldDef{Label: "Email", Placeholder: "soci@example.com", Value: email},
@@ -166,6 +168,7 @@ func (p partnersPanel) partnerForm(existing *model.Partner) formModal {
 		}
 		input := application.PartnerInput{
 			Name:        values["Nom"],
+			NickName:    values["Nom curt"],
 			Surname:     values["Cognoms"],
 			VatCode:     values["NIF"],
 			Email:       values["Email"],
@@ -217,7 +220,7 @@ func (p partnersPanel) membershipsForm(partner model.Partner) formModal {
 			return p.deps.Partners.SetSectionMemberships(ctx, partner.ID(), codes)
 		})
 	}
-	return newFormModal(fmt.Sprintf("Seccions de %s %s", partner.Name(), partner.Surname()), fields, onSubmit)
+	return newFormModal(fmt.Sprintf("Seccions de %s", partner.NickName()), fields, onSubmit)
 }
 
 func (p partnersPanel) View(width, height int) string {
@@ -236,7 +239,7 @@ func (p partnersPanel) View(width, height int) string {
 		if partner.BoardMember() {
 			board = " [junta]"
 		}
-		raw := truncate(fmt.Sprintf("%d  %s %s%s", partner.ID(), partner.Name(), partner.Surname(), board), width-2)
+		raw := truncate(fmt.Sprintf("%d  %s%s", partner.ID(), partner.NickName(), board), width-2)
 		var line string
 		if idx == p.selected {
 			line = focusedPanelStyle.Render("> " + raw)
@@ -254,8 +257,8 @@ func (p partnersPanel) Detail() string {
 	if !ok {
 		return errDetail(p.err)
 	}
-	detail := fmt.Sprintf("Id %d  ·  %s %s  ·  %s  ·  %s  ·  %s  ·  Tipus: %s  ·  RIA: %d",
-		partner.ID(), partner.Name(), partner.Surname(), partner.VatCode(), partner.Email(), partner.Mobile(),
+	detail := fmt.Sprintf("Id %d  ·  %s  ·  %s  ·  %s  ·  %s  ·  Tipus: %s  ·  RIA: %d",
+		partner.ID(), partner.NickName(), partner.VatCode(), partner.Email(), partner.Mobile(),
 		partner.PartnerType(), partner.RiaNumber())
 	if errLine := errDetail(p.err); errLine != "" {
 		detail += "\n" + errLine

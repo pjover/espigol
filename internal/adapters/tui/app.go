@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -60,6 +61,16 @@ type yearSelectedMsg struct {
 // context.
 func yearSelectedCmd(year int, state model.WindowState) tea.Cmd {
 	return func() tea.Msg { return yearSelectedMsg{Year: year, State: state} }
+}
+
+// persistActiveYearCmd stores the active year so it is restored on next launch.
+// It is fire-and-forget: a failed write is a UI-preference miss, not worth
+// surfacing, so it emits no message.
+func persistActiveYearCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		_ = deps.ActiveYear.SetActiveYear(context.Background(), year)
+		return nil
+	}
 }
 
 // rootModel is the Bubble Tea root model. It owns global navigation (panel
@@ -144,7 +155,8 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case yearSelectedMsg:
 		m.year = msg.Year
 		m.yearState = msg.State
-		cmds := make([]tea.Cmd, 0, len(m.panels))
+		cmds := make([]tea.Cmd, 0, len(m.panels)+1)
+		cmds = append(cmds, persistActiveYearCmd(m.deps, msg.Year))
 		for i, p := range m.panels {
 			updated, cmd := p.Update(msg)
 			m.panels[i] = updated
@@ -227,11 +239,9 @@ const sidebarOuterWidth = 24
 func (m rootModel) renderSidebar() string {
 	var b strings.Builder
 
-	businessName := ""
-	if m.deps.Cfg != nil {
-		businessName = m.deps.Cfg.BusinessName
-	}
-	b.WriteString(titleStyle.Render(businessName))
+	// The sidebar shows the app name; the cooperative's BusinessName is
+	// reserved for report/web output, not the admin TUI chrome.
+	b.WriteString(titleStyle.Render("Espígol"))
 	b.WriteString("\n")
 	b.WriteString(dimStyle.Render("Any: ") + titleStyle.Render(strconv.Itoa(m.year)))
 	b.WriteString("\n")
@@ -243,12 +253,12 @@ func (m rootModel) renderSidebar() string {
 	for i, p := range m.panels {
 		// "[N] " prefix is 4 chars; truncate title to fill sidebarInnerWidth exactly.
 		entry := fmt.Sprintf("[%d] %s", i+1, truncate(p.Title(), sidebarInnerWidth-4))
+		style := fgStyle
 		if i == m.focused {
-			entry = focusedPanelStyle.Render(entry)
-		} else {
-			entry = dimStyle.Render(entry)
+			// Width() pads the row so the selection renders as a full-width bar.
+			style = focusedPanelStyle.Width(sidebarInnerWidth)
 		}
-		b.WriteString(entry + "\n")
+		b.WriteString(style.Render(entry) + "\n")
 	}
 
 	innerH := m.height - 1 - 2 // footer(1) + top/bottom border(2)

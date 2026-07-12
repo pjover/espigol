@@ -8,6 +8,7 @@ import (
 type Partner struct {
 	id          int
 	name        string
+	nickName    string
 	surname     string
 	vatCode     string
 	email       string
@@ -18,7 +19,7 @@ type Partner struct {
 	boardMember bool
 }
 
-func NewPartner(id int, name, surname, vatCode, email, mobile string, pt PartnerType,
+func NewPartner(id int, name, nickName, surname, vatCode, email, mobile string, pt PartnerType,
 	riaNumber int, addedOn time.Time, boardMember bool) (Partner, error) {
 	if id < 0 {
 		return Partner{}, fmt.Errorf("partner id must be >= 0, got %d", id)
@@ -26,11 +27,12 @@ func NewPartner(id int, name, surname, vatCode, email, mobile string, pt Partner
 	if riaNumber < 0 {
 		return Partner{}, fmt.Errorf("riaNumber must be >= 0, got %d", riaNumber)
 	}
-	return Partner{id, name, surname, vatCode, email, mobile, pt, riaNumber, addedOn, boardMember}, nil
+	return Partner{id, name, nickName, surname, vatCode, email, mobile, pt, riaNumber, addedOn, boardMember}, nil
 }
 
 func (p Partner) ID() int                  { return p.id }
 func (p Partner) Name() string             { return p.name }
+func (p Partner) NickName() string         { return p.nickName }
 func (p Partner) Surname() string          { return p.surname }
 func (p Partner) VatCode() string          { return p.vatCode }
 func (p Partner) Email() string            { return p.email }

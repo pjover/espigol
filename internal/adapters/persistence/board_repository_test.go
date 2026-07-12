@@ -16,7 +16,7 @@ func TestBoardAuthorizationRepository_RoundTrip(t *testing.T) {
 	repo := persistence.NewBoardAuthorizationRepository(q)
 	ctx := context.Background()
 
-	p, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1,
+	p, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1,
 		time.Date(2023, 4, 21, 0, 0, 0, 0, time.UTC), true)
 	_ = pr.Save(ctx, p)
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)

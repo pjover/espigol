@@ -36,7 +36,7 @@ func seedOpenYearWithForecasts(t *testing.T, conn *sql.DB) {
 	sb, _ := model.NewExpenseSubtype(2027, "b1", "[b1]", "B")
 	_ = tax.SaveSubtype(ctx, sa)
 	_ = tax.SaveSubtype(ctx, sb)
-	p, _ := model.NewPartner(1, "Soci 1", "", "", "s1@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	p, _ := model.NewPartner(1, "Soci 1", "Soci 1", "", "", "s1@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	_ = pr.Save(ctx, p)
 
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)

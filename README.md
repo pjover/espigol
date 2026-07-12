@@ -7,44 +7,103 @@ TUI and server for managing the annual subsidy budget of the Cooperativa d'Estel
 
 Configuration and data live in `~/.config/espigol` by default, overridable with `$ESPIGOL_HOME`.
 
-See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for the phased implementation plans.
+`$ESPIGOL_HOME/config.yaml` example (all keys are optional — defaults shown):
 
-## Admin panel
+```yaml
+business:
+  name: "Cooperativa d'Estellencs"
 
-The admin TUI's `[7] Admin` panel acts on the year selected in the sidebar and offers five keys:
+server:
+  port: 8080
 
-- `f` — generate the report for the selected year (PDF + Markdown into `~/.config/espigol/reports/`).
-- `p` — import forecasts (previsions) for the selected year from a JSON file (see below). Requires the window to be **OPEN**.
-- `c` — import concessions and invoices for the selected year from a JSON file (see [Subsidy reconciliation (Ajuts)](#subsidy-reconciliation-ajuts)). No window-state gate.
-- `b` — back up the database to `~/.config/espigol/backups/espigol-<timestamp>.db`.
-- `r` — restore the database: pick a backup from the list; the current database is backed up first and the chosen one is applied on the next launch.
+# Relative to $ESPIGOL_HOME.  Omit to use the defaults below.
+output:
+  dir: "reports"      # → $ESPIGOL_HOME/reports
+backup:
+  dir: "backups"      # → $ESPIGOL_HOME/backups
+logo:
+  path: "logo.png"    # → $ESPIGOL_HOME/logo.png
 
-### Importing forecasts
+oauth:
+  client_id: ""
+  client_secret: ""
+  redirect_url: ""
 
-`i` reads `~/.config/espigol/import/<year>-forecasts.json` (e.g. `2025-forecasts.json` for 2025). The
-year's submission window must be **OPEN**. The import is **replace-all**: every existing forecast for
-that year is deleted and replaced by the file's contents. The referenced partner (`partnerId`), expense
-subtype (`subtypeCode`), and — for `SECTION` scope — the section (`sectionCode`) must already exist, or
-the whole import is rejected and nothing changes.
-
-`scope` is one of `COMMON`, `SECTION`, or `PARTNER`; `sectionCode` is required only for `SECTION` (and
-must be empty otherwise). `grossAmount` is a decimal string and `plannedDate` is `YYYY-MM-DD`. Imported
-forecasts start unapproved.
-
-```json
-{
-  "year": 2025,
-  "forecasts": [
-    { "partnerId": 7, "scope": "COMMON",  "sectionCode": "",      "subtypeCode": "a1", "concept": "Assegurança collita", "description": "", "grossAmount": "2880.00",  "plannedDate": "2025-06-15" },
-    { "partnerId": 1, "scope": "SECTION", "sectionCode": "oliva", "subtypeCode": "a1", "concept": "Poda",                "description": "", "grossAmount": "1200.00",  "plannedDate": "2025-03-01" },
-    { "partnerId": 3, "scope": "PARTNER", "sectionCode": "",      "subtypeCode": "b1", "concept": "Tractor",             "description": "", "grossAmount": "31900.00", "plannedDate": "2025-09-01" }
-  ]
-}
+admin:
+  email: "admin@espigol"
 ```
 
-### Subsidy reconciliation (Ajuts)
+All keys can be overridden with `ESPIGOL_<KEY>` environment variables
+(e.g. `ESPIGOL_SERVER_PORT=9090`, `ESPIGOL_ADMIN_EMAIL=admin@example.org`).
 
-The `[6] Ajuts` panel manages concession requests and invoice reconciliation for the selected year. The panel
+See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for the phased implementation plans.
+
+## Using the admin TUI
+
+Launch with `espigol` (typically over SSH on the VPS, against the live database).
+
+- `1`–`7` — jump directly to a panel.
+- `q` / `Ctrl+C` — quit.
+- Most panels operate on the year selected in the **`[1] Anys`** panel; switching the selected year there updates what every other panel shows.
+
+The sidebar lists seven panels:
+
+| # | Panel | Purpose |
+|---|-------|---------|
+| 1 | [Anys](#1-anys-years) | Create years, open/close/reopen the submission window, select the active year |
+| 2 | [Socis](#2-socis-partners) | Manage cooperative members |
+| 3 | [Seccions](#3-seccions-sections) | Manage crop/activity sections (e.g. olive, vineyard) |
+| 4 | [Taxonomia](#4-taxonomia-expense-types--subtypes) | Manage the year's expense type/subtype taxonomy |
+| 5 | [Previsions](#5-previsions-forecasts) | Manage partners' forecasted expenses for the year |
+| 6 | [Ajuts](#6-ajuts-subsidy-reconciliation) | Reconcile subsidy concessions and invoices against forecasts |
+| 7 | [Admin](#7-admin) | Generate reports, import data, back up/restore the database |
+
+### [1] Anys (years)
+
+- `↑`/`↓` — select year.
+- `n` — create a new year.
+- `o` — open the year's submission window (or **reopen** it, if it's currently CLOSED).
+- `c` — close the year's submission window (confirmation required).
+- `e` — edit the year's deadline/limits. Only while the window is not CLOSED.
+- `r` — generate the forecast report for the selected year (same as the Admin panel's `f`, see below).
+
+A year's window moves through **DRAFT → OPEN → CLOSED**; only one window is OPEN at a time.
+
+### [2] Socis (partners)
+
+- `↑`/`↓` — select partner.
+- `n` — new partner.
+- `e` — edit the selected partner.
+- `b` — toggle whether the selected partner is a board member ("junta").
+- `m` — manage which sections the selected partner belongs to.
+
+### [3] Seccions (sections)
+
+- `n` — new section.
+- `e` — edit the selected section.
+
+### [4] Taxonomia (expense types & subtypes)
+
+Defines the year's expense categories. Only editable while the year's window is **DRAFT** (locked once OPEN).
+
+- `n` — new subtype.
+- `t` — new type.
+- `e` — edit the selected type/subtype.
+- `d` — delete the selected type/subtype.
+
+### [5] Previsions (forecasts)
+
+Lists the selected year's forecasted expenses.
+
+- `n` — new forecast.
+- `e` — edit the selected forecast.
+- `d` — delete the selected forecast.
+
+Bulk import of forecasts from a JSON file is done from the **Admin** panel's `p` key — see [Importing forecasts](#importing-forecasts) below.
+
+### [6] Ajuts (subsidy reconciliation)
+
+The Ajuts panel manages concession requests and invoice reconciliation for the selected year. The panel
 operates in two views (toggled by `tab`): **Concessions** (subsidy requests grouped by partner/activity) and
 **Factures** (invoices linked to those concessions). All reconciliation data can be imported, created, edited,
 and deleted without any window-state gate, independent of the forecast submission process.
@@ -112,12 +171,59 @@ When creating or editing concessions and invoices via `n` and `e`:
 
 All amounts use decimal notation (e.g. `1234.56`).
 
-#### Current scope
+#### Reconciliation computation
 
-This is **Phase 1** of the subsidy reconciliation feature. It manages concession and invoice data entry only.
-The assignment algorithm (computing actual subsidies per forecast) and final report generation are planned for
-later phases. Soft validation checks (e.g. payment sums, linked forecast totals) are shown as warnings during
-import but do not reject the import.
+Once concessions and invoices are entered, espigol computes, per forecast, how much of the granted subsidy is
+actually assigned based on linked, paid invoices — and assigns one of five statuses:
+
+| Status (Catalan) | Meaning |
+|---|---|
+| Justificat | Fully justified: linked invoice amounts cover the forecast |
+| Parcial | Partially justified: some but not all of the forecast is covered |
+| Sobre-executat | Over-executed: linked amounts exceed the forecast |
+| Pendent pagament | Linked invoices exist but haven't been fully paid yet |
+| Sense factura | No invoice has been linked to the forecast yet |
+
+This computation feeds the reconciliation report generated by the Admin panel's `g` key (below) — the
+per-forecast status shown there is exactly this.
+
+### [7] Admin
+
+The Admin panel acts on the year selected in the sidebar and offers six keys:
+
+- `f` — generate the forecast report for the selected year (PDF + Markdown into `~/.config/espigol/reports/`).
+- `g` — generate the subsidy reconciliation report for the selected year (PDF + Markdown into
+  `~/.config/espigol/reports/Conciliació ajuts <year>.{pdf,md}`). Unlike `f`, this has **no window-state
+  gate** — it can be regenerated at any time, in any window state, and always reflects the current
+  concessions/invoices data. Re-generating overwrites the previous report for that year (one stored snapshot
+  per year).
+- `p` — import forecasts (previsions) for the selected year from a JSON file (see below). Requires the window to be **OPEN**.
+- `c` — import concessions and invoices for the selected year from a JSON file (see [Ajuts](#6-ajuts-subsidy-reconciliation)). No window-state gate.
+- `b` — back up the database to `~/.config/espigol/backups/espigol-<timestamp>.db`.
+- `r` — restore the database: pick a backup from the list; the current database is backed up first and the chosen one is applied on the next launch.
+
+#### Importing forecasts
+
+`p` reads `~/.config/espigol/import/<year>-forecasts.json` (e.g. `2025-forecasts.json` for 2025). The
+year's submission window must be **OPEN**. The import is **replace-all**: every existing forecast for
+that year is deleted and replaced by the file's contents. The referenced partner (`partnerId`), expense
+subtype (`subtypeCode`), and — for `SECTION` scope — the section (`sectionCode`) must already exist, or
+the whole import is rejected and nothing changes.
+
+`scope` is one of `COMMON`, `SECTION`, or `PARTNER`; `sectionCode` is required only for `SECTION` (and
+must be empty otherwise). `grossAmount` is a decimal string and `plannedDate` is `YYYY-MM-DD`. Imported
+forecasts start unapproved.
+
+```json
+{
+  "year": 2025,
+  "forecasts": [
+    { "partnerId": 7, "scope": "COMMON",  "sectionCode": "",      "subtypeCode": "a1", "concept": "Assegurança collita", "description": "", "grossAmount": "2880.00",  "plannedDate": "2025-06-15" },
+    { "partnerId": 1, "scope": "SECTION", "sectionCode": "oliva", "subtypeCode": "a1", "concept": "Poda",                "description": "", "grossAmount": "1200.00",  "plannedDate": "2025-03-01" },
+    { "partnerId": 3, "scope": "PARTNER", "sectionCode": "",      "subtypeCode": "b1", "concept": "Tractor",             "description": "", "grossAmount": "31900.00", "plannedDate": "2025-09-01" }
+  ]
+}
+```
 
 ## Deployment
 

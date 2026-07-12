@@ -80,7 +80,7 @@ func TestAdminMutations(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		p, _ := model.NewPartner(5, "Marta", "Vila", "X5", "m@e.cat", "6", model.Productor, 1,
+		p, _ := model.NewPartner(5, "Marta", "Marta", "Vila", "X5", "m@e.cat", "6", model.Productor, 1,
 			time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 		if err := partnerRepo.Save(ctx, p); err != nil {
 			t.Fatal(err)
@@ -118,7 +118,7 @@ func TestAdminMutations(t *testing.T) {
 		sr := persistence.NewSectionRepository(q)
 		repo := persistence.NewBoardAuthorizationRepository(q)
 
-		p, _ := model.NewPartner(9, "Jordi", "M", "X9", "j@e.cat", "6", model.Productor, 1,
+		p, _ := model.NewPartner(9, "Jordi", "Jordi", "M", "X9", "j@e.cat", "6", model.Productor, 1,
 			time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), true)
 		if err := pr.Save(ctx, p); err != nil {
 			t.Fatal(err)

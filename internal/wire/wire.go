@@ -60,21 +60,31 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 	}
 	clock := system.SystemClock{}
 	txm := persistence.NewTxManager(conn)
+	q := sqlc.New(conn)
 
 	pdf := reportadapter.PDFRenderer{BusinessName: cfg.BusinessName, LogoPath: cfg.LogoPath}
+	reconciliationRenderer := reportadapter.ReconciliationPDFRenderer{
+		BusinessName: cfg.BusinessName,
+		LogoPath:     cfg.LogoPath,
+	}
+	reconciliationMD := reportadapter.ReconciliationMarkdownRenderer{}
+	reconciliationExporter := reportadapter.NewReconciliationExporter(reconciliationRenderer, reconciliationMD)
 
 	deps := tui.Deps{
-		Partners:       application.NewPartnerService(txm, clock, cfg.Admin.Email),
-		Sections:       application.NewSectionService(txm, clock, cfg.Admin.Email),
-		Taxonomy:       application.NewTaxonomyService(txm, clock, cfg.Admin.Email),
-		BoardAuth:      application.NewBoardAuthorizationService(txm, clock, cfg.Admin.Email),
-		Forecasts:      application.NewForecastService(txm, clock),
-		Windows:        application.NewWindowService(txm, pdf, clock),
-		Reports:        application.NewReportService(txm),
-		Reconciliation: application.NewReconciliationService(txm),
-		Exporter:       reportadapter.NewReportExporter(pdf),
-		Backup:         backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
-		Cfg:            cfg,
+		Partners:               application.NewPartnerService(txm, clock, cfg.Admin.Email),
+		Sections:               application.NewSectionService(txm, clock, cfg.Admin.Email),
+		Taxonomy:               application.NewTaxonomyService(txm, clock, cfg.Admin.Email),
+		BoardAuth:              application.NewBoardAuthorizationService(txm, clock, cfg.Admin.Email),
+		Forecasts:              application.NewForecastService(txm, clock),
+		Windows:                application.NewWindowService(txm, pdf, clock),
+		Reports:                application.NewReportService(txm),
+		Reconciliation:         application.NewReconciliationService(txm, clock, reconciliationRenderer),
+		Exporter:               reportadapter.NewReportExporter(pdf),
+		ReconciliationExporter: reconciliationExporter,
+		Backup:                 backup.New(conn, cfg.DBPath, cfg.BackupDir, clock),
+		ActiveYear:             persistence.NewAppStateRepository(q),
+		Clock:                  clock,
+		Cfg:                    cfg,
 	}
 
 	panels := []tui.Panel{

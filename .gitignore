@@ -26,4 +26,5 @@ espigol.code-workspace
 /.superpowers/
 
 # Private files
-.private/
+private
+

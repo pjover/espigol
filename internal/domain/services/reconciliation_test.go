@@ -32,7 +32,7 @@ func TestReconciliation_EmptyInput_ReturnsEmptyData(t *testing.T) {
 func mkForecastForReconciliation(t *testing.T, id string, partnerID int, subtypeCode string, gross string) model.ExpenseForecast {
 	t.Helper()
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p, err := model.NewPartner(partnerID, "X", "Y", "V", "x"+id+"@e.cat", "6", model.Productor, 1, planned, false)
+	p, err := model.NewPartner(partnerID, "X", "X", "Y", "V", "x"+id+"@e.cat", "6", model.Productor, 1, planned, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestReconciliation_DisabledForecastsSkipped(t *testing.T) {
 	f := mkForecastForReconciliation(t, "CP25001", 7, "a2", "100.00")
 	// A disabled forecast — build it directly with enabled=false
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p, _ := model.NewPartner(7, "X", "Y", "V", "y@e.cat", "6", model.Productor, 1, planned, false)
+	p, _ := model.NewPartner(7, "X", "X", "Y", "V", "y@e.cat", "6", model.Productor, 1, planned, false)
 	disabled, _ := model.NewExpenseForecast("CP25002", p, "d", "", model.MoneyOf(50), model.ZeroMoney(),
 		nil, planned, 2025, "a2", model.NewCommonScope(), planned, false /*enabled=false*/)
 	c, _ := model.NewConcession(2025, "A2-01", "a2", "concept", model.MoneyOf(150), model.MoneyOf(150))
@@ -405,4 +405,3 @@ func TestReconciliation_DisabledForecastsSkipped(t *testing.T) {
 		t.Errorf("Concession Assigned = %s, want 100.00", cn.Assigned.String())
 	}
 }
-

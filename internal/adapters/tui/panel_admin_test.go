@@ -40,6 +40,26 @@ func seedDraftTaxonomyYear(t *testing.T, q *sqlc.Queries, year int) {
 	}
 }
 
+// infoModalMessage runs cmd, asserts it opens an infoModal, and returns its
+// message. Admin actions surface their outcome via this modal (dismissed on
+// Enter) rather than lingering result text in Detail().
+func infoModalMessage(t *testing.T, cmd tea.Cmd) string {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("expected a command opening the info modal, got nil")
+	}
+	msg := runCmd(t, cmd)
+	om, ok := msg.(openModalMsg)
+	if !ok {
+		t.Fatalf("expected openModalMsg, got %T", msg)
+	}
+	im, ok := om.modal.(infoModal)
+	if !ok {
+		t.Fatalf("expected infoModal, got %T", om.modal)
+	}
+	return im.message
+}
+
 // --- Taxonomia panel ---
 
 func TestTaxonomyPanel_ListsTypesAndSubtypesForYear(t *testing.T) {
@@ -479,7 +499,7 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("f"))
+	_, cmd = p.Update(pKey("h"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -496,7 +516,7 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 	if doneMsg.err != nil {
 		t.Fatalf("generateReportCmd error: %v", doneMsg.err)
 	}
-	p, _ = p.Update(doneMsg)
+	p, cmd = p.Update(doneMsg)
 
 	outputDir := deps.Cfg.OutputDir
 	for _, name := range []string{"Previsions de despeses 2027.pdf", "Previsions de despeses 2027.md"} {
@@ -505,9 +525,9 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		}
 	}
 
-	detail := p.Detail()
-	if !strings.Contains(detail, "2027") && !strings.Contains(detail, "pdf") {
-		t.Errorf("Detail() = %q, want it to show the written paths", detail)
+	message := infoModalMessage(t, cmd)
+	if !strings.Contains(message, "2027") && !strings.Contains(message, "pdf") {
+		t.Errorf("info modal = %q, want it to show the written paths", message)
 	}
 }
 
@@ -527,7 +547,7 @@ func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("f"))
+	_, cmd = p.Update(pKey("h"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -554,6 +574,51 @@ func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 	}
 }
 
+// TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist drives the
+// "g" key end-to-end: real ReconciliationService.GenerateReport over a real
+// temp DB, then real ReconciliationExporter.Export, asserting the PDF+MD
+// files actually land on disk. Unlike the "f" report, there is no window-state
+// gate, so an OPEN window (or any state) works.
+func TestAdminPanel_GKey_GeneratesReconciliationReportAndFilesExist(t *testing.T) {
+	deps, q := testDeps(t)
+	ctx := context.Background()
+	seedWindow(t, q, 2026, model.WindowOpen)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2026, "A", "[a]", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2026, "a1", "[a1]", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+
+	p := NewAdminPanel(deps)
+	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
+	if cmd != nil {
+		runCmd(t, cmd)
+	}
+
+	_, cmd = p.Update(pKey("i"))
+	msg := runCmd(t, cmd)
+	genMsg, ok := msg.(reconciliationGeneratedMsg)
+	if !ok {
+		t.Fatalf("expected reconciliationGeneratedMsg, got %T", msg)
+	}
+	if genMsg.err != nil {
+		t.Fatalf("generateReconciliationCmd error: %v", genMsg.err)
+	}
+	p, cmd = p.Update(genMsg)
+
+	outputDir := deps.Cfg.OutputDir
+	for _, name := range []string{"Conciliació ajuts 2026.pdf", "Conciliació ajuts 2026.md"} {
+		if _, err := os.Stat(filepath.Join(outputDir, name)); err != nil {
+			t.Errorf("expected %s to exist: %v", name, err)
+		}
+	}
+
+	message := infoModalMessage(t, cmd)
+	if !strings.Contains(message, "2026") || !strings.Contains(message, "pdf") {
+		t.Errorf("info modal = %q, want it to show the written paths", message)
+	}
+}
+
 func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	deps, q := testDeps(t)
 	ctx := context.Background()
@@ -565,7 +630,7 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	_ = tax.SaveType(ctx, ta)
 	sa, _ := model.NewExpenseSubtype(2025, "a1", "[a1]", "A")
 	_ = tax.SaveSubtype(ctx, sa)
-	p7, _ := model.NewPartner(7, "Soci", "", "", "s7@e.test", "", model.Productor, 0,
+	p7, _ := model.NewPartner(7, "Soci", "Soci", "", "", "s7@e.test", "", model.Productor, 0,
 		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	_ = persistence.NewPartnerRepository(q).Save(ctx, p7)
 
@@ -583,7 +648,7 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("p"))
+	_, cmd := p.Update(pKey("j"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err != nil {
 		t.Fatalf("import error: %v", msg.err)
@@ -591,9 +656,9 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	if msg.result.Created != 2 {
 		t.Errorf("Created = %d, want 2", msg.result.Created)
 	}
-	p, _ = p.Update(msg)
-	if got := p.Detail(); !strings.Contains(got, "Importats 2") {
-		t.Errorf("Detail = %q, want it to mention Importats 2", got)
+	_, cmd = p.Update(msg)
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, "Importats 2") {
+		t.Errorf("info modal = %q, want it to mention Importats 2", got)
 	}
 }
 
@@ -609,7 +674,7 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 	}
 	p := NewAdminPanel(deps)
 	p, _ = p.Update(yearSelectedMsg{Year: 2025})
-	_, cmd := p.Update(pKey("p"))
+	_, cmd := p.Update(pKey("j"))
 	msg := runCmd(t, cmd).(forecastsImportedMsg)
 	if msg.err == nil {
 		t.Fatal("expected error importing into a non-OPEN year")
@@ -619,16 +684,16 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
 	deps, _ := testDeps(t) // no backups created
 	p := NewAdminPanel(deps)
-	p, _ = p.Update(pKey("r"))
-	if got := p.Detail(); !strings.Contains(got, "cap còpia") {
-		t.Errorf("Detail = %q, want it to mention 'cap còpia'", got)
+	_, cmd := p.Update(pKey("r"))
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, "cap còpia") {
+		t.Errorf("info modal = %q, want it to mention 'cap còpia'", got)
 	}
 }
 
 func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
 	deps, _ := testDeps(t)
 	p := NewAdminPanel(deps)
-	_, cmd := p.Update(pKey("b"))
+	_, cmd := p.Update(pKey("c"))
 	msg := runCmd(t, cmd).(backupDoneMsg)
 	if msg.err != nil {
 		t.Fatalf("backup error: %v", msg.err)
@@ -636,8 +701,8 @@ func TestAdminPanel_Backup_CreatesFileAndShowsPath(t *testing.T) {
 	if _, err := os.Stat(msg.path); err != nil {
 		t.Fatalf("backup file missing: %v", err)
 	}
-	p, _ = p.Update(msg)
-	if got := p.Detail(); !strings.Contains(got, msg.path) {
-		t.Errorf("Detail = %q, want it to contain the backup path", got)
+	_, cmd = p.Update(msg)
+	if got := infoModalMessage(t, cmd); !strings.Contains(got, msg.path) {
+		t.Errorf("info modal = %q, want it to contain the backup path", got)
 	}
 }

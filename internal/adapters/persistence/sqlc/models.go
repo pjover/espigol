@@ -8,6 +8,11 @@ import (
 	"database/sql"
 )
 
+type AppState struct {
+	ID         int64
+	ActiveYear int64
+}
+
 type AuditEvent struct {
 	ID         int64
 	ActorID    sql.NullInt64
@@ -107,11 +112,19 @@ type Partner struct {
 	RiaNumber   int64
 	AddedOn     string
 	BoardMember int64
+	NickName    string
 }
 
 type PartnerSection struct {
 	PartnerID   int64
 	SectionCode string
+}
+
+type ReconciliationSnapshot struct {
+	Year         int64
+	GeneratedAt  string
+	SnapshotJson string
+	Pdf          []byte
 }
 
 type Report struct {
