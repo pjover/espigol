@@ -100,28 +100,55 @@ func TestBuildReconciliationLayout_BlockStructure(t *testing.T) {
 	blocks := buildReconciliationLayout(rd)
 
 	// One category → no PageBreak; expected blocks:
-	// [0] SectionTitle (category header)
-	// [1] Table (category summary)
-	// [2] SectionTitle (subtype)
-	// [3] Table (concessions summary)
-	// [4] Table (per-forecast for A6-01)
-	if len(blocks) != 5 {
-		t.Fatalf("len(blocks) = %d, want 5; blocks: %#v", len(blocks), blocks)
+	// [0] SectionTitle (Resum)
+	// [1] Table (Resum summary)
+	// [2] SectionTitle (category header)
+	// [3] Table (category summary)
+	// [4] SectionTitle (subtype)
+	// [5] Table (concessions summary)
+	// [6] Table (per-forecast for A6-01)
+	if len(blocks) != 7 {
+		t.Fatalf("len(blocks) = %d, want 7; blocks: %#v", len(blocks), blocks)
 	}
 
-	// [0] Category header contains "a6"
-	st0, ok := blocks[0].(SectionTitle)
+	// [0] Resum title
+	rst, ok := blocks[0].(SectionTitle)
 	if !ok {
 		t.Fatalf("blocks[0] = %T, want SectionTitle", blocks[0])
 	}
-	if !strings.Contains(st0.Text, "a6") {
-		t.Errorf("blocks[0].Text %q should contain subtype code", st0.Text)
+	if rst.Text != "Resum" {
+		t.Errorf("blocks[0].Text = %q, want %q", rst.Text, "Resum")
 	}
 
-	// [1] Category summary table has correct headers
-	tbl1, ok := blocks[1].(Table)
+	// [1] Resum summary table — 1 category row + 1 total row, last row Bold
+	rtbl, ok := blocks[1].(Table)
 	if !ok {
 		t.Fatalf("blocks[1] = %T, want Table", blocks[1])
+	}
+	if len(rtbl.Rows) != 2 {
+		t.Errorf("resum rows = %d, want 2 (1 category + total)", len(rtbl.Rows))
+	}
+	if !rtbl.Rows[len(rtbl.Rows)-1].Bold {
+		t.Errorf("last row of resum should be Bold")
+	}
+	// single current-category → label letter "a"
+	if !strings.Contains(rtbl.Rows[0].Cells[0], "(a)") {
+		t.Errorf("resum category label = %q, want it to contain \"(a)\"", rtbl.Rows[0].Cells[0])
+	}
+
+	// [2] Category header contains "a6"
+	st0, ok := blocks[2].(SectionTitle)
+	if !ok {
+		t.Fatalf("blocks[2] = %T, want SectionTitle", blocks[2])
+	}
+	if !strings.Contains(st0.Text, "a6") {
+		t.Errorf("blocks[2].Text %q should contain subtype code", st0.Text)
+	}
+
+	// [3] Category summary table has correct headers
+	tbl1, ok := blocks[3].(Table)
+	if !ok {
+		t.Fatalf("blocks[3] = %T, want Table", blocks[3])
 	}
 	if len(tbl1.Headers) < 5 {
 		t.Errorf("category summary headers = %v", tbl1.Headers)
@@ -132,28 +159,28 @@ func TestBuildReconciliationLayout_BlockStructure(t *testing.T) {
 		t.Errorf("last row of category summary should be Bold")
 	}
 
-	// [2] Subtype title "a6 — [a6]"
-	st2, ok := blocks[2].(SectionTitle)
+	// [4] Subtype title "a6 — [a6]"
+	st2, ok := blocks[4].(SectionTitle)
 	if !ok {
-		t.Fatalf("blocks[2] = %T, want SectionTitle", blocks[2])
+		t.Fatalf("blocks[4] = %T, want SectionTitle", blocks[4])
 	}
 	if !strings.Contains(st2.Text, "a6") || !strings.Contains(st2.Text, "[a6]") {
-		t.Errorf("blocks[2].Text = %q", st2.Text)
+		t.Errorf("blocks[4].Text = %q", st2.Text)
 	}
 
-	// [3] Concessions summary table — 1 concession row + 1 totals row
-	tbl3, ok := blocks[3].(Table)
+	// [5] Concessions summary table — 1 concession row + 1 totals row
+	tbl3, ok := blocks[5].(Table)
 	if !ok {
-		t.Fatalf("blocks[3] = %T, want Table", blocks[3])
+		t.Fatalf("blocks[5] = %T, want Table", blocks[5])
 	}
 	if len(tbl3.Rows) != 2 {
 		t.Errorf("concessions summary rows = %d, want 2", len(tbl3.Rows))
 	}
 
-	// [4] Per-forecast table — 2 forecast rows + 2 invoice follow-up rows
-	tbl4, ok := blocks[4].(Table)
+	// [6] Per-forecast table — 2 forecast rows + 2 invoice follow-up rows
+	tbl4, ok := blocks[6].(Table)
 	if !ok {
-		t.Fatalf("blocks[4] = %T, want Table", blocks[4])
+		t.Fatalf("blocks[6] = %T, want Table", blocks[6])
 	}
 	if len(tbl4.Rows) != 4 {
 		t.Errorf("per-forecast rows = %d, want 4 (2 forecasts + 2 invoice rows)", len(tbl4.Rows))

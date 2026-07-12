@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pjover/espigol/internal/domain/model"
 	"github.com/pjover/espigol/internal/domain/services"
 )
 
 func buildReconciliationLayout(rd services.ReconciliationData) []Block {
 	var blocks []Block
+	blocks = append(blocks, summaryReconciliationBlocks(rd)...)
 	for i, cat := range rd.Categories {
 		blocks = append(blocks, categoryReconciliationBlocks(cat)...)
 		if i < len(rd.Categories)-1 {
@@ -18,12 +20,68 @@ func buildReconciliationLayout(rd services.ReconciliationData) []Block {
 	return blocks
 }
 
+// summaryReconciliationBlocks builds the leading "Resum" section: one row per
+// category with its rolled-up figures, plus a grand-total row.
+func summaryReconciliationBlocks(rd services.ReconciliationData) []Block {
+	if len(rd.Categories) == 0 {
+		return nil
+	}
+	rows := make([]Row, 0, len(rd.Categories)+1)
+	var req, gr, ex, as, dev model.Money = model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney(), model.ZeroMoney()
+	for _, cat := range rd.Categories {
+		rows = append(rows, Row{Cells: []string{
+			categorySummaryLabel(cat),
+			formatEuro(cat.Requested),
+			formatEuro(cat.Granted),
+			formatEuro(cat.Executed),
+			formatEuro(cat.Assigned),
+			formatEuro(cat.NetDeviation),
+		}})
+		req = req.Plus(cat.Requested)
+		gr = gr.Plus(cat.Granted)
+		ex = ex.Plus(cat.Executed)
+		as = as.Plus(cat.Assigned)
+		dev = dev.Plus(cat.NetDeviation)
+	}
+	rows = append(rows, Row{
+		Cells: []string{"Total", formatEuro(req), formatEuro(gr), formatEuro(ex), formatEuro(as), formatEuro(dev)},
+		Bold:  true,
+	})
+	return []Block{
+		SectionTitle{Text: "Resum"},
+		Table{
+			Headers: []string{"Subtipus", "Demanat", "Concedit", "Executat", "Assignat", "Desviació"},
+			Widths:  []uint{3, 2, 2, 2, 2, 2},
+			Rows:    rows,
+		},
+	}
+}
+
 func categoryHeader(cat services.CategoryReconciliation) string {
 	codes := make([]string, len(cat.Subtypes))
 	for i, st := range cat.Subtypes {
 		codes[i] = st.Code
 	}
 	return fmt.Sprintf("%s (%s)", categoryLabel(cat.Category), strings.Join(codes, ", "))
+}
+
+// categorySummaryLabel labels a category in the Resum table with its distinct
+// type letters (e.g. "Despesa corrent (a)"), derived from the leading letter of
+// its subtype codes — unlike categoryHeader, which lists every subtype code.
+func categorySummaryLabel(cat services.CategoryReconciliation) string {
+	seen := map[string]bool{}
+	var letters []string
+	for _, st := range cat.Subtypes {
+		if st.Code == "" {
+			continue
+		}
+		l := strings.ToLower(st.Code[:1])
+		if !seen[l] {
+			seen[l] = true
+			letters = append(letters, l)
+		}
+	}
+	return fmt.Sprintf("%s (%s)", categoryLabel(cat.Category), strings.Join(letters, ", "))
 }
 
 func categoryReconciliationBlocks(cat services.CategoryReconciliation) []Block {
