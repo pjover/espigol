@@ -33,7 +33,6 @@ make vet             # go vet ./...
 make tidy            # go mod tidy
 make sqlc-generate    # regenerate internal/adapters/persistence/sqlc from db/queries + db/migrations
 make dist            # cross-compile linux-amd64, linux-arm64, darwin-arm64 into dist/<os>-<arch>/espigol
-make adopt           # build cmd/adopt, the one-time Mongo(via espigol-java)->this-schema migration tool
 ```
 
 Single test: `go test ./internal/domain/services/... -run TestFairShare -v` (standard Go
@@ -52,7 +51,6 @@ domain imports nothing from `adapters/`** — no SQL, HTTP, or TUI types leak in
 
 ```
 cmd/espigol/main.go        entrypoint -> internal/app (flag parse: TUI vs --server vs --version)
-cmd/adopt/                 one-time legacy-DB adoption tool (legacy/ read, transform/ convert)
 internal/domain/
   model/                   immutable structs (Partner, ExpenseForecast, Section, Money, ...)
   ports/                   repository + Clock + ReportRenderer interfaces the domain depends on
