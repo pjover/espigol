@@ -499,7 +499,7 @@ func TestAdminPanel_ClosedYear_GeneratesViaExportAndFilesExist(t *testing.T) {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("f"))
+	_, cmd = p.Update(pKey("h"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {
@@ -547,7 +547,7 @@ func TestAdminPanel_OpenYear_GeneratesViaExportDataAndFilesExist(t *testing.T) {
 		runCmd(t, cmd)
 	}
 
-	_, cmd = p.Update(pKey("f"))
+	_, cmd = p.Update(pKey("h"))
 	msg := runCmd(t, cmd)
 	wsMsg, ok := msg.(windowStateMsg)
 	if !ok {

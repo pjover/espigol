@@ -15,7 +15,7 @@ import (
 )
 
 // adminPanel is the "Admin" panel (formerly "Informes"). It operates on the
-// selected-year context and offers: f generate report, p import forecasts
+// selected-year context and offers: h generate report, p import forecasts
 // (requires OPEN window), c import concessions + invoices / ajuts (no window
 // gate), b backup the database, r restore it. It also lists which years have a
 // stored Report, for context.
@@ -290,7 +290,7 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 
 func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 	switch msg.String() {
-	case "f":
+	case "h":
 		return p, p.findWindowStateCmd(p.year)
 	case "g":
 		return p, generateReconciliationCmd(p.deps, p.year)
@@ -334,12 +334,12 @@ func (p adminPanel) Detail() string {
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	return dimStyle.Render("f: informe · g: conciliació · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
+	return dimStyle.Render("h: informe previsions · g: conciliació · p: importa previsions · c: importa concessions i factures · b: còpia · r: restaura")
 }
 
 func (p adminPanel) Actions() []Action {
 	return []Action{
-		{Key: "f", Label: "genera informe"},
+		{Key: "h", Label: "informe previsions"},
 		{Key: "g", Label: "genera informe de conciliació"},
 		{Key: "p", Label: "importa previsions"},
 		{Key: "c", Label: "importa concessions i factures"},
