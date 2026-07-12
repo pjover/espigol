@@ -52,7 +52,7 @@ func seedImportYear(t *testing.T, state model.WindowState) (*application.Forecas
 	_ = persistence.NewSectionRepository(q).Save(ctx, sec)
 	pr := persistence.NewPartnerRepository(q)
 	for _, id := range []int{1, 7} {
-		p, _ := model.NewPartner(id, "Soci", "", "", fmt.Sprintf("s%d@e.test", id), "", model.Productor, 0, impNow(), false)
+		p, _ := model.NewPartner(id, "Soci", "Soci", "", "", fmt.Sprintf("s%d@e.test", id), "", model.Productor, 0, impNow(), false)
 		_ = pr.Save(ctx, p)
 	}
 
@@ -148,7 +148,7 @@ func TestAdminImport_MissingPartnerRollsBack(t *testing.T) {
 // mustPartner builds a valid Partner value for constructing test forecasts.
 func mustPartner(t *testing.T, id int) model.Partner {
 	t.Helper()
-	p, err := model.NewPartner(id, "Soci", "", "", "s@e.test", "", model.Productor, 0, impNow(), false)
+	p, err := model.NewPartner(id, "Soci", "Soci", "", "", "s@e.test", "", model.Productor, 0, impNow(), false)
 	if err != nil {
 		t.Fatal(err)
 	}

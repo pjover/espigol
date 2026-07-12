@@ -172,7 +172,7 @@ func prefix(f model.ExpenseForecast) string {
 	case model.ScopeSection:
 		name = strings.ToUpper(f.Scope().SectionCode()[:1]) + f.Scope().SectionCode()[1:]
 	default:
-		name = truncate(f.Partner().Name(), 10)
+		name = truncate(f.Partner().NickName(), 10)
 	}
 	return fmt.Sprintf("%s  %-10s  %9s €  ", f.ID(), name, formatMoney(f.GrossAmount()))
 }
@@ -611,7 +611,7 @@ func (m *forecastFormModal) partnerLabel() string {
 		return "(cap soci)"
 	}
 	pt := m.partners[m.partnerIdx]
-	return fmt.Sprintf("%d %s %s", pt.ID(), pt.Name(), pt.Surname())
+	return fmt.Sprintf("%d %s", pt.ID(), pt.NickName())
 }
 
 func (m *forecastFormModal) scopeLabel() string {

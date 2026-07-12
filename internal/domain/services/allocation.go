@@ -201,7 +201,7 @@ func displayName(partnerByID map[int]model.Partner, id int) string {
 	if !ok {
 		return fmt.Sprintf("Unknown (%d)", id)
 	}
-	return fmt.Sprintf("%s (%d)", p.Name(), p.ID())
+	return p.NickName()
 }
 
 func filterCommon(in []model.ExpenseForecast) []model.ExpenseForecast {

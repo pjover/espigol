@@ -27,7 +27,7 @@ func newStore(t *testing.T, now time.Time) (*auth.SessionStore, *sqlc.Queries, *
 	t.Cleanup(func() { conn.Close() })
 	q := sqlc.New(conn)
 	// a partner for the FK
-	p, _ := model.NewPartner(1, "Soci", "", "", "s1@e.test", "", model.Productor, 0,
+	p, _ := model.NewPartner(1, "Soci", "Soci", "", "", "s1@e.test", "", model.Productor, 0,
 		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	if err := persistence.NewPartnerRepository(q).Save(context.Background(), p); err != nil {
 		t.Fatal(err)

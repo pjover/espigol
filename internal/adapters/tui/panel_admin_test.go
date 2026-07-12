@@ -610,7 +610,7 @@ func TestAdminPanel_Import_CreatesForecasts(t *testing.T) {
 	_ = tax.SaveType(ctx, ta)
 	sa, _ := model.NewExpenseSubtype(2025, "a1", "[a1]", "A")
 	_ = tax.SaveSubtype(ctx, sa)
-	p7, _ := model.NewPartner(7, "Soci", "", "", "s7@e.test", "", model.Productor, 0,
+	p7, _ := model.NewPartner(7, "Soci", "Soci", "", "", "s7@e.test", "", model.Productor, 0,
 		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	_ = persistence.NewPartnerRepository(q).Save(ctx, p7)
 

@@ -28,7 +28,7 @@ func seedForYear(t *testing.T, q *sqlc.Queries, year int) {
 	_ = tax.SaveType(ctx, typ)
 	st, _ := model.NewExpenseSubtype(year, "a1", "[a1]", "A")
 	_ = tax.SaveSubtype(ctx, st)
-	p, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1,
+	p, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1,
 		time.Date(2023, 4, 21, 0, 0, 0, 0, time.UTC), false)
 	_ = pr.Save(ctx, p)
 }
@@ -50,7 +50,7 @@ func TestForecastRepository_CreateAllocatesIDAndRoundTrips(t *testing.T) {
 	ctx := context.Background()
 
 	planned := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	f, _ := model.NewUnsavedExpenseForecast(p7, "Concepte", "desc", model.MoneyOf(2880), model.ZeroMoney(),
 		nil, planned, 2026, "a1", model.NewCommonScope(), planned, true)
 
@@ -85,7 +85,7 @@ func TestForecastRepository_InsertWithID(t *testing.T) {
 	ctx := context.Background()
 
 	planned := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	f, _ := model.NewExpenseForecast("CP26099", p7, "Fixed", "desc", model.MoneyOf(500), model.ZeroMoney(),
 		nil, planned, 2026, "a1", model.NewCommonScope(), planned, true)
 
@@ -113,7 +113,7 @@ func TestForecastRepository_SectionScopeAndMoneyExactness(t *testing.T) {
 	planned := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	sectionScope, _ := model.NewSectionScope("oliva")
 	gross, _ := model.MoneyFromString("1322.22") // the former-REAL value
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	f, _ := model.NewUnsavedExpenseForecast(p7, "C", "d", gross, model.ZeroMoney(),
 		nil, planned, 2026, "a1", sectionScope, planned, true)
 

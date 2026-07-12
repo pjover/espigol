@@ -26,7 +26,7 @@ func TestPartnerRepository_RoundTrip(t *testing.T) {
 	repo := persistence.NewPartnerRepository(openTestDB(t))
 	ctx := context.Background()
 
-	p, _ := model.NewPartner(1, "Pau", "Bosch Palmer", "X1", "pau@e.cat", "600",
+	p, _ := model.NewPartner(1, "Pau", "Pau", "Bosch Palmer", "X1", "pau@e.cat", "600",
 		model.Productor, 13937, time.Date(2023, 4, 21, 0, 0, 0, 0, time.UTC), true)
 	if err := repo.Save(ctx, p); err != nil {
 		t.Fatalf("Save: %v", err)

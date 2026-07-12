@@ -31,7 +31,7 @@ func newTxManager(t *testing.T) (*persistence.TxManager, ports.PartnerRepository
 
 func samplePartner(t *testing.T, id int) model.Partner {
 	t.Helper()
-	p, err := model.NewPartner(id, "P", "", "", "p"+string(rune('0'+id))+"@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	p, err := model.NewPartner(id, "P", "P", "", "", "p"+string(rune('0'+id))+"@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	if err != nil {
 		t.Fatal(err)
 	}

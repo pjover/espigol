@@ -48,13 +48,13 @@ func minimalReconData(t *testing.T) services.ReconciliationData {
 								Difference: m("100.00"),
 								Forecasts: []services.ForecastReconciliation{
 									{
-										ForecastID:  "CP25001",
-										PartnerID:   7,
-										Concept:     "Fertilitzant",
-										GrossAmount: m("500.00"),
-										Executed:    m("400.00"),
-										Assigned:    m("400.00"),
-										Status:      services.StatusPartiallyJustified,
+										ForecastID:      "CP25001",
+										PartnerNickName: "Soci 7",
+										Concept:         "Fertilitzant",
+										GrossAmount:     m("500.00"),
+										Executed:        m("400.00"),
+										Assigned:        m("400.00"),
+										Status:          services.StatusPartiallyJustified,
 										Invoices: []services.InvoiceContribution{
 											{
 												InvoiceID:    1,
@@ -67,13 +67,13 @@ func minimalReconData(t *testing.T) services.ReconciliationData {
 										},
 									},
 									{
-										ForecastID:  "CP25002",
-										PartnerID:   1,
-										Concept:     "Herbicida",
-										GrossAmount: m("500.00"),
-										Executed:    m("400.00"),
-										Assigned:    m("400.00"),
-										Status:      services.StatusPaymentPending,
+										ForecastID:      "CP25002",
+										PartnerNickName: "Soci 1",
+										Concept:         "Herbicida",
+										GrossAmount:     m("500.00"),
+										Executed:        m("400.00"),
+										Assigned:        m("400.00"),
+										Status:          services.StatusPaymentPending,
 										Invoices: []services.InvoiceContribution{
 											{
 												InvoiceID:    2,

@@ -137,7 +137,7 @@ func newReconWorld(t *testing.T) reconWorld {
 	st, _ := model.NewExpenseSubtype(2025, "a6", "[a6]", "A")
 	_ = tax.SaveSubtype(ctx, st)
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	_ = pr.Save(ctx, p7)
 	uf, _ := model.NewUnsavedExpenseForecast(p7, "Adob", "d", model.MoneyOf(500), model.ZeroMoney(),
 		nil, planned, 2025, "a6", model.NewCommonScope(), planned, true)
@@ -286,7 +286,7 @@ func newReconWorldWithForecasts(t *testing.T, ids ...string) reconWorld {
 	st, _ := model.NewExpenseSubtype(2025, "a6", "[a6]", "A")
 	_ = tax.SaveSubtype(ctx, st)
 	planned := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	p7, _ := model.NewPartner(7, "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
+	p7, _ := model.NewPartner(7, "X", "X", "Y", "V", "x@e.cat", "6", model.Productor, 1, planned, false)
 	_ = pr.Save(ctx, p7)
 
 	// Allocate forecasts CP25001.. until all requested ids are present.
@@ -493,7 +493,7 @@ func new2025World(t *testing.T) reconWorld {
 
 	// Partners 1/2/4/5/6/7/8/11 (derived from export-forecasts.json).
 	for _, pid := range []int{1, 2, 4, 5, 6, 7, 8, 11} {
-		p, _ := model.NewPartner(pid, fmt.Sprintf("P%d", pid), "S", "V",
+		p, _ := model.NewPartner(pid, fmt.Sprintf("P%d", pid), fmt.Sprintf("P%d", pid), "S", "V",
 			fmt.Sprintf("p%d@e.cat", pid), "6", model.Productor, 1, planned, false)
 		_ = pr.Save(ctx, p)
 	}

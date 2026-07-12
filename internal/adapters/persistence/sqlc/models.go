@@ -107,6 +107,7 @@ type Partner struct {
 	RiaNumber   int64
 	AddedOn     string
 	BoardMember int64
+	NickName    string
 }
 
 type PartnerSection struct {

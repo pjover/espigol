@@ -35,7 +35,7 @@ func seedDraft2026(t *testing.T, conn *sql.DB) {
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
 	_ = sr.Save(ctx, oliva)
 	pr := persistence.NewPartnerRepository(q)
-	soci, _ := model.NewPartner(5, "Soci Cinc", "", "", "u5@e.test", "", model.Productor, 0, fcNow(), false)
+	soci, _ := model.NewPartner(5, "Soci Cinc", "Soci Cinc", "", "", "u5@e.test", "", model.Productor, 0, fcNow(), false)
 	_ = pr.Save(ctx, soci)
 }
 
@@ -60,7 +60,7 @@ func seedClosed2026(t *testing.T, conn *sql.DB) {
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
 	_ = sr.Save(ctx, oliva)
 	pr := persistence.NewPartnerRepository(q)
-	soci, _ := model.NewPartner(5, "Soci Cinc", "", "", "u5@e.test", "", model.Productor, 0, fcNow(), false)
+	soci, _ := model.NewPartner(5, "Soci Cinc", "Soci Cinc", "", "", "u5@e.test", "", model.Productor, 0, fcNow(), false)
 	_ = pr.Save(ctx, soci)
 }
 

@@ -113,7 +113,7 @@ func concessionBlocks(cn services.ConcessionReconciliation) Block {
 	for _, fr := range cn.Forecasts {
 		rows = append(rows, Row{Cells: []string{
 			fr.ForecastID,
-			fmt.Sprintf("%d", fr.PartnerID),
+			fr.PartnerNickName,
 			fr.Concept,
 			formatEuro(fr.GrossAmount),
 			formatEuro(fr.Executed),

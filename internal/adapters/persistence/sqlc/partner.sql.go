@@ -10,7 +10,7 @@ import (
 )
 
 const getPartner = `-- name: GetPartner :one
-SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member
+SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member, nick_name
 FROM partner WHERE id = ?
 `
 
@@ -28,12 +28,13 @@ func (q *Queries) GetPartner(ctx context.Context, id int64) (Partner, error) {
 		&i.RiaNumber,
 		&i.AddedOn,
 		&i.BoardMember,
+		&i.NickName,
 	)
 	return i, err
 }
 
 const getPartnerByEmail = `-- name: GetPartnerByEmail :one
-SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member
+SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member, nick_name
 FROM partner WHERE email = ?
 `
 
@@ -51,12 +52,13 @@ func (q *Queries) GetPartnerByEmail(ctx context.Context, email string) (Partner,
 		&i.RiaNumber,
 		&i.AddedOn,
 		&i.BoardMember,
+		&i.NickName,
 	)
 	return i, err
 }
 
 const listPartners = `-- name: ListPartners :many
-SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member
+SELECT id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member, nick_name
 FROM partner ORDER BY id
 `
 
@@ -80,6 +82,7 @@ func (q *Queries) ListPartners(ctx context.Context) ([]Partner, error) {
 			&i.RiaNumber,
 			&i.AddedOn,
 			&i.BoardMember,
+			&i.NickName,
 		); err != nil {
 			return nil, err
 		}
@@ -95,12 +98,13 @@ func (q *Queries) ListPartners(ctx context.Context) ([]Partner, error) {
 }
 
 const upsertPartner = `-- name: UpsertPartner :exec
-INSERT INTO partner (id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO partner (id, name, surname, vat_code, email, mobile, partner_type, ria_number, added_on, board_member, nick_name)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   name=excluded.name, surname=excluded.surname, vat_code=excluded.vat_code,
   email=excluded.email, mobile=excluded.mobile, partner_type=excluded.partner_type,
-  ria_number=excluded.ria_number, added_on=excluded.added_on, board_member=excluded.board_member
+  ria_number=excluded.ria_number, added_on=excluded.added_on, board_member=excluded.board_member,
+  nick_name=excluded.nick_name
 `
 
 type UpsertPartnerParams struct {
@@ -114,6 +118,7 @@ type UpsertPartnerParams struct {
 	RiaNumber   int64
 	AddedOn     string
 	BoardMember int64
+	NickName    string
 }
 
 func (q *Queries) UpsertPartner(ctx context.Context, arg UpsertPartnerParams) error {
@@ -128,6 +133,7 @@ func (q *Queries) UpsertPartner(ctx context.Context, arg UpsertPartnerParams) er
 		arg.RiaNumber,
 		arg.AddedOn,
 		arg.BoardMember,
+		arg.NickName,
 	)
 	return err
 }

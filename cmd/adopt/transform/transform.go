@@ -145,7 +145,7 @@ func Run(ctx context.Context, legacyPath, destPath string) (Counts, error) {
 		if err != nil {
 			return Counts{}, fmt.Errorf("parsing partner type %q: %w", lp.PartnerType, err)
 		}
-		p, err := model.NewPartner(lp.ID, lp.Name, lp.Surname, lp.VatCode, lp.Email, lp.Mobile,
+		p, err := model.NewPartner(lp.ID, lp.Name, lp.Name, lp.Surname, lp.VatCode, lp.Email, lp.Mobile,
 			pt, lp.RiaNumber, lp.AddedOn, lp.BoardMember)
 		if err != nil {
 			return Counts{}, fmt.Errorf("building partner %d: %w", lp.ID, err)

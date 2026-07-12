@@ -70,7 +70,7 @@ func seedForecastUsingSubtype(t *testing.T, conn *sql.DB, year int, subtypeCode 
 	ctx := context.Background()
 
 	pr := persistence.NewPartnerRepository(q)
-	soci, err := model.NewPartner(1, "Soci U", "", "", "u1@e.test", "", model.Productor, 0, txNow(), false)
+	soci, err := model.NewPartner(1, "Soci U", "Soci U", "", "", "u1@e.test", "", model.Productor, 0, txNow(), false)
 	if err != nil {
 		t.Fatal(err)
 	}

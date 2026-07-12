@@ -41,7 +41,7 @@ func TestSectionRepository_Membership(t *testing.T) {
 	// FK requires partner + section to exist first.
 	oliva, _ := model.NewSection("oliva", "Secció d'oliva", true, 1)
 	_ = secRepo.Save(ctx, oliva)
-	p, _ := model.NewPartner(1, "Pau", "B", "X", "p@e.cat", "6", model.Productor, 1, time.Date(2023, 4, 21, 0, 0, 0, 0, time.UTC), false)
+	p, _ := model.NewPartner(1, "Pau", "Pau", "B", "X", "p@e.cat", "6", model.Productor, 1, time.Date(2023, 4, 21, 0, 0, 0, 0, time.UTC), false)
 	_ = partnerRepo.Save(ctx, p)
 
 	m, _ := model.NewPartnerSection(1, "oliva")
@@ -64,8 +64,8 @@ func TestSectionRepository_ListMemberships(t *testing.T) {
 	ram, _ := model.NewSection("ramaderia", "Secció de ramaderia", true, 2)
 	_ = sr.Save(ctx, oliva)
 	_ = sr.Save(ctx, ram)
-	p1, _ := model.NewPartner(1, "A", "", "", "a@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
-	p2, _ := model.NewPartner(2, "B", "", "", "b@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	p1, _ := model.NewPartner(1, "A", "A", "", "", "a@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	p2, _ := model.NewPartner(2, "B", "B", "", "", "b@e.test", "", model.Productor, 1, time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
 	_ = pr.Save(ctx, p1)
 	_ = pr.Save(ctx, p2)
 	m1, _ := model.NewPartnerSection(1, "oliva")

@@ -66,16 +66,16 @@ type ConcessionReconciliation struct {
 }
 
 type ForecastReconciliation struct {
-	ForecastID     string                `json:"forecastId"`
-	PartnerID      int                   `json:"partnerId"`
-	Concept        string                `json:"concept"`
-	GrossAmount    model.Money           `json:"grossAmount"`
-	ApprovedAmount model.Money           `json:"approvedAmount"`
-	Executed       model.Money           `json:"executed"`
-	Pending        model.Money           `json:"pending"`
-	Assigned       model.Money           `json:"assigned"`
-	Status         ForecastReconStatus   `json:"status"`
-	Invoices       []InvoiceContribution `json:"invoices"`
+	ForecastID      string                `json:"forecastId"`
+	PartnerNickName string                `json:"partnerNickName"`
+	Concept         string                `json:"concept"`
+	GrossAmount     model.Money           `json:"grossAmount"`
+	ApprovedAmount  model.Money           `json:"approvedAmount"`
+	Executed        model.Money           `json:"executed"`
+	Pending         model.Money           `json:"pending"`
+	Assigned        model.Money           `json:"assigned"`
+	Status          ForecastReconStatus   `json:"status"`
+	Invoices        []InvoiceContribution `json:"invoices"`
 }
 
 type InvoiceContribution struct {
@@ -118,13 +118,12 @@ func ComputeReconciliation(in ReconciliationInput) (ReconciliationData, error) {
 			forecastByID[f.ID()] = f
 		}
 	}
-	partnerIDForForecast := make(map[string]int, len(in.Forecasts))
+	partnerNickNameForForecast := make(map[string]string, len(in.Forecasts))
 	for _, f := range in.Forecasts {
 		if !f.Enabled() {
 			continue
 		}
-		// ExpenseForecast exposes the partner via Partner(), not PartnerID().
-		partnerIDForForecast[f.ID()] = f.Partner().ID()
+		partnerNickNameForForecast[f.ID()] = f.Partner().NickName()
 	}
 	subtypeCategory := make(map[string]model.ExpenseCategory, len(in.Subtypes))
 	typeCategory := make(map[string]model.ExpenseCategory, len(in.Types))
@@ -140,7 +139,7 @@ func ComputeReconciliation(in ReconciliationInput) (ReconciliationData, error) {
 	concessionsBySubtype := make(map[string][]ConcessionReconciliation, len(in.Concessions))
 	for _, c := range in.Concessions {
 		g := groups[c.GroupCode()]
-		forecastRecs := forecastsForGroup(c.GroupCode(), in.Links, forecastByID, exec, assigned, partnerIDForForecast, g)
+		forecastRecs := forecastsForGroup(c.GroupCode(), in.Links, forecastByID, exec, assigned, partnerNickNameForForecast, g)
 		if len(forecastRecs) == 0 {
 			continue // no enabled forecasts in this group → skip
 		}
@@ -227,7 +226,7 @@ func forecastsForGroup(
 	forecastByID map[string]model.ExpenseForecast,
 	exec map[string]forecastExec,
 	assigned map[string]model.Money,
-	partnerIDForForecast map[string]int,
+	partnerNickNameForForecast map[string]string,
 	g groupResult,
 ) []ForecastReconciliation {
 	var out []ForecastReconciliation
@@ -241,16 +240,16 @@ func forecastsForGroup(
 		}
 		fx := exec[f.ID()]
 		out = append(out, ForecastReconciliation{
-			ForecastID:     f.ID(),
-			PartnerID:      partnerIDForForecast[f.ID()],
-			Concept:        f.Concept(),
-			GrossAmount:    f.GrossAmount(),
-			ApprovedAmount: f.ApprovedAmount(),
-			Executed:       fx.Executed,
-			Pending:        fx.Pending,
-			Assigned:       assigned[f.ID()],
-			Status:         statusFor(f, fx, g),
-			Invoices:       fx.Invoices,
+			ForecastID:      f.ID(),
+			PartnerNickName: partnerNickNameForForecast[f.ID()],
+			Concept:         f.Concept(),
+			GrossAmount:     f.GrossAmount(),
+			ApprovedAmount:  f.ApprovedAmount(),
+			Executed:        fx.Executed,
+			Pending:         fx.Pending,
+			Assigned:        assigned[f.ID()],
+			Status:          statusFor(f, fx, g),
+			Invoices:        fx.Invoices,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ForecastID < out[j].ForecastID })

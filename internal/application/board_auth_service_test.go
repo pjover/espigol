@@ -33,7 +33,7 @@ func seedBoardPartner(t *testing.T, conn *sql.DB, id int, board bool) {
 	t.Helper()
 	q := sqlc.New(conn)
 	pr := persistence.NewPartnerRepository(q)
-	p, err := model.NewPartner(id, "Soci", "Cognom", "", "soci@e.test", "", model.Productor, 0, baNow(), board)
+	p, err := model.NewPartner(id, "Soci", "Soci", "Cognom", "", "soci@e.test", "", model.Productor, 0, baNow(), board)
 	if err != nil {
 		t.Fatal(err)
 	}

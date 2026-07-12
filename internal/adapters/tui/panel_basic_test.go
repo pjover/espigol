@@ -367,6 +367,7 @@ func partnerInput(id int) application.PartnerInput {
 	return application.PartnerInput{
 		ID:          id,
 		Name:        "Joan",
+		NickName:    "Joanet",
 		Surname:     "Garcia",
 		VatCode:     "12345678A",
 		Email:       "joan@example.com",
@@ -388,7 +389,7 @@ func TestPartnersPanel_ListsPartners(t *testing.T) {
 	p, _ = p.Update(loaded)
 
 	view := p.View(80, 20)
-	if !strings.Contains(view, "Joan") || !strings.Contains(view, "Garcia") {
+	if !strings.Contains(view, "Joanet") {
 		t.Errorf("View() = %q, want it to contain the seeded partner", view)
 	}
 }

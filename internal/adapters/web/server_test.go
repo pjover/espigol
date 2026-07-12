@@ -64,7 +64,7 @@ func buildServer(t *testing.T) *httptest.Server {
 	_ = tax.SaveSubtype(ctx, sb)
 
 	// Partner
-	soci, _ := model.NewPartner(1, "Soci Test", "", "", "s1@e.test", "", model.Productor, 0, testNow, false)
+	soci, _ := model.NewPartner(1, "Soci Test", "Soci Test", "", "", "s1@e.test", "", model.Productor, 0, testNow, false)
 	if err := persistence.NewPartnerRepository(q).Save(ctx, soci); err != nil {
 		t.Fatalf("seed partner: %v", err)
 	}
@@ -484,7 +484,7 @@ func buildClosedWindowServer(t *testing.T) *httptest.Server {
 	_ = tax.SaveSubtype(ctx, sa)
 
 	// Partner
-	soci, _ := model.NewPartner(1, "Soci Test", "", "", "s1@e.test", "", model.Productor, 0, testNow, false)
+	soci, _ := model.NewPartner(1, "Soci Test", "Soci Test", "", "", "s1@e.test", "", model.Productor, 0, testNow, false)
 	if err := persistence.NewPartnerRepository(q).Save(ctx, soci); err != nil {
 		t.Fatalf("seed partner: %v", err)
 	}
@@ -547,13 +547,13 @@ func buildBoardServer(t *testing.T) (ts *httptest.Server, partnerAForecastID str
 	_ = tax.SaveSubtype(ctx, sa)
 
 	// Soci A — regular partner
-	sociA, _ := model.NewPartner(1, "Soci A", "", "", "sA@e.test", "", model.Productor, 0, testNow, false)
+	sociA, _ := model.NewPartner(1, "Soci A", "Soci A", "", "", "sA@e.test", "", model.Productor, 0, testNow, false)
 	if err := persistence.NewPartnerRepository(q).Save(ctx, sociA); err != nil {
 		t.Fatalf("seed soci A: %v", err)
 	}
 
 	// Board B — board member
-	boardB, _ := model.NewPartner(2, "Board B", "", "", "sB@e.test", "", model.Productor, 0, testNow, true)
+	boardB, _ := model.NewPartner(2, "Board B", "Board B", "", "", "sB@e.test", "", model.Productor, 0, testNow, true)
 	if err := persistence.NewPartnerRepository(q).Save(ctx, boardB); err != nil {
 		t.Fatalf("seed board B: %v", err)
 	}
