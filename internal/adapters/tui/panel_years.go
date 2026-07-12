@@ -281,7 +281,7 @@ func (p yearsPanel) View(width, height int) string {
 		raw := truncate(fmt.Sprintf("%d  %s", w.Year(), w.State()), width-2)
 		var styled string
 		if idx == p.selected {
-			styled = focusedPanelStyle.Render("> ") + stateStyle(w.State()).Render(raw)
+			styled = focusedPanelStyle.Render("> " + raw)
 		} else {
 			styled = "  " + stateStyle(w.State()).Render(raw)
 		}

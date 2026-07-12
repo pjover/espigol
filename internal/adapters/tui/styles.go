@@ -6,10 +6,14 @@ import (
 )
 
 var (
+	colorFgDefault  = lipgloss.AdaptiveColor{Light: "#3a4055", Dark: "#c0caf5"}
 	colorFgMuted    = lipgloss.AdaptiveColor{Light: "#5c6370", Dark: "#565f89"}
 	colorFgEmphasis = lipgloss.AdaptiveColor{Light: "#1a1b26", Dark: "#e0e0e0"}
 
-	colorBgSelection = lipgloss.AdaptiveColor{Light: "#dce0f5", Dark: "#364a82"}
+	// Selection = light-blue background with bold yellow text (a colorblind-safe
+	// pair). Used for the focused sidebar panel and every in-panel row/field.
+	colorSelectionBg = lipgloss.AdaptiveColor{Light: "#dce0f5", Dark: "#364a82"}
+	colorSelectionFg = lipgloss.AdaptiveColor{Light: "#7a5c00", Dark: "#e0af68"}
 
 	colorAccent = lipgloss.AdaptiveColor{Light: "#2055c7", Dark: "#7aa2f7"}
 
@@ -23,10 +27,13 @@ var (
 
 var (
 	titleStyle        = lipgloss.NewStyle().Bold(true).Foreground(colorFgEmphasis)
+	fgStyle           = lipgloss.NewStyle().Foreground(colorFgDefault)
 	dimStyle          = lipgloss.NewStyle().Foreground(colorFgMuted)
 	redStyle          = lipgloss.NewStyle().Foreground(colorError)
-	focusedPanelStyle = lipgloss.NewStyle().Bold(true).Foreground(colorAccent)
-	helpStyle         = lipgloss.NewStyle().Foreground(colorFgMuted)
+	focusedPanelStyle = lipgloss.NewStyle().Bold(true).
+				Foreground(colorSelectionFg).
+				Background(colorSelectionBg)
+	helpStyle = lipgloss.NewStyle().Foreground(colorFgDefault)
 
 	// sidebarInnerWidth is the content width inside the sidebar border+padding.
 	// Outer rendered width = sidebarInnerWidth + 2 (Padding(0,1)) + 2 (border) = sidebarInnerWidth + 4.

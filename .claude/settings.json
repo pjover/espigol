@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(rtk ls *)",
-      "Bash(rtk wc *)"
+      "Bash(rtk wc *)",
+      "Bash(rtk grep *)"
     ]
   }
 }

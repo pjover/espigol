@@ -253,12 +253,12 @@ func (m rootModel) renderSidebar() string {
 	for i, p := range m.panels {
 		// "[N] " prefix is 4 chars; truncate title to fill sidebarInnerWidth exactly.
 		entry := fmt.Sprintf("[%d] %s", i+1, truncate(p.Title(), sidebarInnerWidth-4))
+		style := fgStyle
 		if i == m.focused {
-			entry = focusedPanelStyle.Render(entry)
-		} else {
-			entry = dimStyle.Render(entry)
+			// Width() pads the row so the selection renders as a full-width bar.
+			style = focusedPanelStyle.Width(sidebarInnerWidth)
 		}
-		b.WriteString(entry + "\n")
+		b.WriteString(style.Render(entry) + "\n")
 	}
 
 	innerH := m.height - 1 - 2 // footer(1) + top/bottom border(2)
