@@ -27,4 +27,6 @@ type Deps struct {
 	ActiveYear             ports.ActiveYearStore
 	Clock                  ports.Clock
 	Cfg                    *config.Config
+	Projecte               *application.ProjecteService
+	ProjecteExporter       report.ProjecteExporter
 }

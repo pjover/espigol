@@ -17,8 +17,9 @@ import (
 // adminPanel is the "Admin" panel (formerly "Informes"). It operates on the
 // selected-year context and offers: h forecast report, i reconciliation
 // report, j import forecasts (requires OPEN window), k import concessions +
-// invoices / ajuts (no window gate), c backup the database, r restore it. It
-// also lists which years have a stored Report, for context.
+// invoices / ajuts (no window gate), p generate the Consorci documents, c
+// backup the database, r restore it. It also lists which years have a
+// stored Report, for context.
 type adminPanel struct {
 	deps  Deps
 	year  int
@@ -71,6 +72,13 @@ type backupDoneMsg struct {
 
 // reconciliationGeneratedMsg carries the outcome of generateReconciliationCmd.
 type reconciliationGeneratedMsg struct {
+	year  int
+	paths []string
+	err   error
+}
+
+// projecteGeneratedMsg carries the outcome of generateProjecteCmd.
+type projecteGeneratedMsg struct {
 	year  int
 	paths []string
 	err   error
@@ -143,6 +151,23 @@ func generateReconciliationCmd(deps Deps, year int) tea.Cmd {
 		}
 		paths, err := deps.ReconciliationExporter.Export(snap, deps.Cfg.OutputDir)
 		return reconciliationGeneratedMsg{year: year, paths: paths, err: err}
+	}
+}
+
+// generateProjecteCmd computes the year's ProjecteData and writes the two
+// Consorci Markdown documents (Projecte d'actuació + Pressupost) via
+// ProjecteExporter. Live data, no window-state gate.
+func generateProjecteCmd(deps Deps, year int) tea.Cmd {
+	return func() tea.Msg {
+		if deps.Projecte == nil || deps.Cfg == nil {
+			return projecteGeneratedMsg{year: year, err: fmt.Errorf("documents Consorci no disponibles")}
+		}
+		data, err := deps.Projecte.Compute(context.Background(), year)
+		if err != nil {
+			return projecteGeneratedMsg{year: year, err: err}
+		}
+		paths, err := deps.ProjecteExporter.Export(data, deps.Cfg.OutputDir)
+		return projecteGeneratedMsg{year: year, paths: paths, err: err}
 	}
 }
 
@@ -268,6 +293,21 @@ func (p adminPanel) Update(msg tea.Msg) (Panel, tea.Cmd) {
 		}
 		return p, resultModalCmd(text, nil)
 
+	case projecteGeneratedMsg:
+		if msg.year != p.year {
+			return p, nil
+		}
+		var text string
+		switch {
+		case msg.err != nil:
+			text = errDetail(msg.err)
+		case len(msg.paths) == 0:
+			text = "Documents Consorci generats (cap fitxer)."
+		default:
+			text = "Documents Consorci generats:\n  " + strings.Join(msg.paths, "\n  ")
+		}
+		return p, resultModalCmd(text, nil)
+
 	case backupDoneMsg:
 		text := errDetail(msg.err)
 		if msg.err == nil {
@@ -298,6 +338,8 @@ func (p adminPanel) handleKey(msg tea.KeyMsg) (Panel, tea.Cmd) {
 		return p, importForecastsCmd(p.deps, p.year)
 	case "k":
 		return p, importReconciliationCmd(p.deps, p.year)
+	case "p":
+		return p, generateProjecteCmd(p.deps, p.year)
 	case "c":
 		return p, backupCmd(p.deps)
 	case "r":
@@ -334,7 +376,7 @@ func (p adminPanel) Detail() string {
 	if p.yearsErr != nil {
 		return errDetail(p.yearsErr)
 	}
-	return dimStyle.Render("h: informe previsions · i: informe conciliació · j: importa previsions · k: importa concessions i factures · c: còpia · r: restaura")
+	return dimStyle.Render("h: informe previsions · i: informe conciliació · j: importa previsions · k: importa concessions i factures · p: documents Consorci · c: còpia · r: restaura")
 }
 
 func (p adminPanel) Actions() []Action {
@@ -343,6 +385,7 @@ func (p adminPanel) Actions() []Action {
 		{Key: "i", Label: "informe conciliació"},
 		{Key: "j", Label: "importa previsions"},
 		{Key: "k", Label: "importa concessions i factures"},
+		{Key: "p", Label: "documents Consorci"},
 		{Key: "c", Label: "còpia"},
 		{Key: "r", Label: "restaura"},
 	}
