@@ -85,6 +85,8 @@ func TUI(cfg *config.Config) (*tui.App, error) {
 		ActiveYear:             persistence.NewAppStateRepository(q),
 		Clock:                  clock,
 		Cfg:                    cfg,
+		Projecte:               application.NewProjecteService(txm),
+		ProjecteExporter:       reportadapter.NewProjecteExporter(),
 	}
 
 	panels := []tui.Panel{

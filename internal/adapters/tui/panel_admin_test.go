@@ -681,6 +681,55 @@ func TestAdminPanel_Import_ClosedYearSurfacesError(t *testing.T) {
 	}
 }
 
+func TestAdminPanel_PKey_GeneratesConsorciDocs(t *testing.T) {
+	deps, q := testDeps(t)
+	ctx := context.Background()
+	seedWindow(t, q, 2026, model.WindowOpen)
+	tax := persistence.NewTaxonomyRepository(q)
+	ta, _ := model.NewExpenseType(2026, "A", "Despeses corrents", model.CategoryCurrent)
+	_ = tax.SaveType(ctx, ta)
+	sa, _ := model.NewExpenseSubtype(2026, "a6", "Despeses de fertilitzants", "A")
+	_ = tax.SaveSubtype(ctx, sa)
+	p7, _ := model.NewPartner(7, "Soci", "Soci", "", "", "s7@e.test", "", model.Productor, 0,
+		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), false)
+	_ = persistence.NewPartnerRepository(q).Save(ctx, p7)
+	if _, err := deps.Forecasts.AdminCreate(ctx, testAdminEmail, 2026, 7, application.ForecastInput{
+		Concept:     "Adob orgànic",
+		Description: "d",
+		GrossAmount: model.MoneyOf(6580),
+		PlannedDate: time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC),
+		SubtypeCode: "a6",
+		ScopeKind:   model.ScopeCommon,
+	}); err != nil {
+		t.Fatalf("seed forecast: %v", err)
+	}
+
+	p := NewAdminPanel(deps)
+	p, cmd := p.Update(yearSelectedMsg{Year: 2026})
+	if cmd != nil {
+		runCmd(t, cmd)
+	}
+	_, cmd = p.Update(pKey("p"))
+	genMsg, ok := runCmd(t, cmd).(projecteGeneratedMsg)
+	if !ok {
+		t.Fatalf("expected projecteGeneratedMsg, got %T", genMsg)
+	}
+	if genMsg.err != nil {
+		t.Fatalf("generateProjecteCmd error: %v", genMsg.err)
+	}
+	_, cmd = p.Update(genMsg)
+
+	outputDir := deps.Cfg.OutputDir
+	for _, name := range []string{"Projecte d'actuació 2026.md", "Pressupost del projecte d'actuació 2026.md"} {
+		if _, err := os.Stat(filepath.Join(outputDir, name)); err != nil {
+			t.Errorf("expected %s to exist: %v", name, err)
+		}
+	}
+	if msg := infoModalMessage(t, cmd); !strings.Contains(msg, "Documents Consorci generats") {
+		t.Errorf("info modal = %q, want it to mention 'Documents Consorci generats'", msg)
+	}
+}
+
 func TestAdminPanel_Restore_EmptyListShowsNotice(t *testing.T) {
 	deps, _ := testDeps(t) // no backups created
 	p := NewAdminPanel(deps)

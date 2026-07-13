@@ -62,6 +62,8 @@ func testDeps(t *testing.T) (Deps, *sqlc.Queries) {
 		Backup:                 backup.New(conn, dbPath, filepath.Join(home, "backups"), clock),
 		ActiveYear:             persistence.NewAppStateRepository(q),
 		Clock:                  clock,
+		Projecte:               application.NewProjecteService(txm),
+		ProjecteExporter:       appreport.NewProjecteExporter(),
 		Cfg: &config.Config{
 			Home:      home,
 			DBPath:    dbPath,
